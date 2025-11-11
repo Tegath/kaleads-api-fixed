@@ -119,7 +119,11 @@ class PersonaExtractorAgentOptimized:
         )
 
         background = [
-            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+            "⚠️ CRITICAL INSTRUCTION - WILL BE EVALUATED ⚠️",
+            "You MUST respond EXCLUSIVELY in FRENCH (français).",
+            "EVERY SINGLE WORD must be in French.",
+            "If you use ANY English word, the response will be REJECTED.",
+            "No exceptions. French only. Français uniquement.",
         ]
 
         if client_context:
@@ -202,7 +206,11 @@ class CompetitorFinderAgentOptimized:
         )
 
         background = [
-            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+            "⚠️ CRITICAL INSTRUCTION - WILL BE EVALUATED ⚠️",
+            "You MUST respond EXCLUSIVELY in FRENCH (français).",
+            "EVERY SINGLE WORD must be in French.",
+            "If you use ANY English word, the response will be REJECTED.",
+            "No exceptions. French only. Français uniquement.",
         ]
 
         if client_context:
@@ -275,7 +283,11 @@ class PainPointAgentOptimized:
         )
 
         background = [
-            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+            "⚠️ CRITICAL INSTRUCTION - WILL BE EVALUATED ⚠️",
+            "You MUST respond EXCLUSIVELY in FRENCH (français).",
+            "EVERY SINGLE WORD must be in French.",
+            "If you use ANY English word, the response will be REJECTED.",
+            "No exceptions. French only. Français uniquement.",
         ]
 
         if client_context:
@@ -347,7 +359,11 @@ class SignalGeneratorAgentOptimized:
         )
 
         background = [
-            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+            "⚠️ CRITICAL INSTRUCTION - WILL BE EVALUATED ⚠️",
+            "You MUST respond EXCLUSIVELY in FRENCH (français).",
+            "EVERY SINGLE WORD must be in French.",
+            "If you use ANY English word, the response will be REJECTED.",
+            "No exceptions. French only. Français uniquement.",
         ]
 
         if client_context:
@@ -418,7 +434,11 @@ class SystemBuilderAgentOptimized:
         )
 
         background = [
-            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+            "⚠️ CRITICAL INSTRUCTION - WILL BE EVALUATED ⚠️",
+            "You MUST respond EXCLUSIVELY in FRENCH (français).",
+            "EVERY SINGLE WORD must be in French.",
+            "If you use ANY English word, the response will be REJECTED.",
+            "No exceptions. French only. Français uniquement.",
         ]
 
         if client_context:
@@ -487,7 +507,11 @@ class CaseStudyAgentOptimized:
         )
 
         background = [
-            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+            "⚠️ CRITICAL INSTRUCTION - WILL BE EVALUATED ⚠️",
+            "You MUST respond EXCLUSIVELY in FRENCH (français).",
+            "EVERY SINGLE WORD must be in French.",
+            "If you use ANY English word, the response will be REJECTED.",
+            "No exceptions. French only. Français uniquement.",
         ]
 
         if client_context:

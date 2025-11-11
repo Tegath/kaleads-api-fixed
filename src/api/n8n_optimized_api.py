@@ -99,7 +99,7 @@ class GenerateEmailRequest(BaseModel):
     template_id: Optional[str] = Field(None, description="Template ID from Supabase (alternative to template_content)")
     options: Dict[str, Any] = Field(
         default_factory=lambda: {
-            "model_preference": "cheap",  # cheap|balanced|quality
+            "model_preference": "balanced",  # cheap|balanced|quality (balanced par défaut pour meilleure qualité)
             "enable_scraping": True,
             "enable_pci_filter": True
         }
@@ -256,14 +256,16 @@ async def generate_email_with_agents(
     supabase_client = SupabaseClient()
     client_context = supabase_client.load_client_context(client_id)
 
-    # Build context string for agents
+    # Build context string for agents - EXPLICIT role definition
     client_personas_str = ", ".join([p.get("title", "") for p in client_context.personas[:2]]) if client_context.personas else "solutions diverses"
-    context_str = (
-        f"You work for {client_context.client_name}. "
-        f"Your client's product/service: {client_personas_str}. "
-        f"You are prospecting TO the prospect company (they are potential BUYERS of your client's services). "
-        f"Focus on problems that YOUR CLIENT ({client_context.client_name}) can solve with their offering."
-    )
+    context_str = f"""🎯 CRITICAL CONTEXT - YOUR ROLE:
+- You work FOR: {client_context.client_name}
+- Your client's offering: {client_personas_str}
+- You are prospecting TO: {contact.company_name}
+- {contact.company_name} is a POTENTIAL CLIENT who might BUY {client_context.client_name}'s services
+- {contact.company_name} is NOT your client, they are the PROSPECT/TARGET
+- Focus ONLY on problems that {client_context.client_name} can solve with their offering
+- The pain points must be relevant to what {client_context.client_name} sells ({client_personas_str})"""
 
     # Initialize agents with model preference AND client context
     if model_preference == "cheap":
