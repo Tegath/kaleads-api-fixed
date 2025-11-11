@@ -1,0 +1,83 @@
+{
+  "contact": {
+    "company_name": "Aircall",
+    "first_name": "Sophie",
+    "website": "https://aircall.io"
+  },
+  "template": "Bonjour {{first_name}},",
+  "history": [
+    {
+      "timestamp": "2025-11-06T13:14:37.349892",
+      "quality_score": 76,
+      "fallback_levels": {
+        "persona_agent": 1,
+        "competitor_agent": 1,
+        "pain_agent": 2,
+        "case_study_agent": 1,
+        "signal_agent": 1,
+        "system_agent": 1
+      },
+      "email_content": "Bonjour Sophie,",
+      "variables": {
+        "target_persona": "vP Sales",
+        "product_category": "solution de téléphonie cloud",
+        "competitor_name": "dialpad",
+        "competitor_product_category": "solution de téléphonie cloud",
+        "problem_specific": "Les équipes de vente perdent 2h/semaine à gérer les appels entrants et sortants manuellement.",
+        "impact_measurable": "Cela représente 10% de la productivité hebdomadaire de chaque vendeur, soit 1.5 ventes non réalisées par mois.",
+        "case_study_result": "2h/semaine économisées par représentant commercial grâce à l'automatisation des appels",
+        "specific_signal_1": "utilisent des solutions de téléphonie cloud",
+        "specific_signal_2": "envisagent de migrer vers une nouvelle solution de téléphonie",
+        "specific_target_1": "entreprises de SaaS 100-500 employés",
+        "specific_target_2": "entreprises ayant récemment recruté un responsable des ventes",
+        "system_1": "gestion des appels",
+        "system_2": "automatisation des flux de travail",
+        "system_3": "suivi des performances commerciales",
+        "first_name": "Sophie",
+        "company_name": "Aircall",
+        "hook": ""
+      },
+      "feedback": {
+        "rating": "",
+        "issues": "Je ne sais pas si c'est pertinent mais j'ai 3 idées qui pourraient aider pour ça :",
+        "improvements": [
+          "- {{strategie 1}}, ou alors {{strategie2}} ou {{strategie3}}."
+        ],
+        "timestamp": "2025-11-06T13:14:37.355887"
+      }
+    },
+    {
+      "timestamp": "2025-11-06T13:14:37.356398",
+      "quality_score": 76,
+      "fallback_levels": {
+        "persona_agent": 1,
+        "competitor_agent": 1,
+        "pain_agent": 2,
+        "case_study_agent": 1,
+        "signal_agent": 1,
+        "system_agent": 1
+      },
+      "email_content": "Bonjour Sophie,",
+      "variables": {
+        "target_persona": "vP Sales",
+        "product_category": "solution de téléphonie cloud",
+        "competitor_name": "dialpad",
+        "competitor_product_category": "solution de téléphonie cloud",
+        "problem_specific": "Les équipes de vente perdent 2h/semaine à gérer les appels entrants et sortants manuellement.",
+        "impact_measurable": "Cela représente 10% de la productivité hebdomadaire de chaque vendeur, soit 1.5 ventes non réalisées par mois.",
+        "case_study_result": "2h/semaine économisées par représentant commercial grâce à l'automatisation des appels",
+        "specific_signal_1": "utilisent des solutions de téléphonie cloud",
+        "specific_signal_2": "envisagent de migrer vers une nouvelle solution de téléphonie",
+        "specific_target_1": "entreprises de SaaS 100-500 employés",
+        "specific_target_2": "entreprises ayant récemment recruté un responsable des ventes",
+        "system_1": "gestion des appels",
+        "system_2": "automatisation des flux de travail",
+        "system_3": "suivi des performances commerciales",
+        "first_name": "Sophie",
+        "company_name": "Aircall",
+        "hook": ""
+      },
+      "feedback": null
+    }
+  ]
+}

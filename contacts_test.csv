@@ -1,0 +1,11 @@
+company_name,first_name,last_name,email,website,industry
+Aircall,Sophie,Durand,sophie@aircall.io,https://aircall.io,SaaS
+Stripe,Jean,Martin,jean@stripe.com,https://stripe.com,FinTech
+Notion,Marie,Dubois,marie@notion.so,https://notion.so,Productivity
+Figma,Pierre,Bernard,pierre@figma.com,https://figma.com,Design
+Doctolib,Claire,Petit,claire@doctolib.fr,https://doctolib.fr,HealthTech
+Algolia,Thomas,Leroy,thomas@algolia.com,https://algolia.com,Search
+Datadog,Sophie,Moreau,sophie@datadoghq.com,https://datadoghq.com,Monitoring
+Contentsquare,Lucas,Simon,lucas@contentsquare.com,https://contentsquare.com,Analytics
+Miro,Emma,Laurent,emma@miro.com,https://miro.com,Collaboration
+Calendly,Hugo,Roux,hugo@calendly.com,https://calendly.com,Scheduling

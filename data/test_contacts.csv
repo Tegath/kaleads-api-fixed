@@ -1,0 +1,6 @@
+company_name,first_name,last_name,email,website,linkedin_url,industry
+Aircall,Sophie,Durand,sophie@aircall.io,https://aircall.io,https://linkedin.com/company/aircall,SaaS
+Slack,Marc,Dubois,marc@slack.com,https://slack.com,https://linkedin.com/company/slack,SaaS
+HubSpot,Julie,Martin,julie@hubspot.com,https://hubspot.com,https://linkedin.com/company/hubspot,Marketing Tech
+Salesforce,Pierre,Leroy,pierre@salesforce.com,https://salesforce.com,https://linkedin.com/company/salesforce,CRM
+Zendesk,Marie,Bernard,marie@zendesk.com,https://zendesk.com,https://linkedin.com/company/zendesk,Customer Support

@@ -1,0 +1,47 @@
+# Core Atomic Agents
+atomic-agents>=2.0.0
+instructor>=1.0.0
+
+# AI/LLM
+openai>=1.12.0
+anthropic>=0.18.1
+
+# Data validation
+pydantic>=2.11.0
+pydantic-settings>=2.1.0
+
+# API
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+
+# Frontend
+streamlit>=1.28.0
+
+# Database
+supabase>=2.9.0
+psycopg2-binary==2.9.9
+
+# Web scraping & enrichment
+requests>=2.32.3
+beautifulsoup4>=4.12.3
+playwright>=1.41.2
+crawl4ai>=0.1.0
+
+# Utilities
+python-dotenv>=1.0.1
+asyncio>=3.4.3
+aiohttp>=3.9.3
+
+# Monitoring & Logging
+sentry-sdk==1.40.5
+structlog==24.1.0
+
+# Testing
+pytest==8.0.1
+pytest-asyncio==0.23.5
+pytest-cov==4.1.0
+
+# Development
+black==24.2.0
+flake8==7.0.0
+mypy==1.8.0
