@@ -71,6 +71,7 @@ class CompetitorFinderInputSchema(BaseIOSchema):
     website: str = Field(..., description="URL du site web")
     industry: str = Field(default="", description="Secteur d'activité")
     product_category: str = Field(default="", description="Catégorie de produit (vient de PersonaExtractorAgent)")
+    website_content: str = Field(default="", description="Contenu pré-scrapé du site (optionnel)")
 
 
 class CompetitorFinderOutputSchema(BaseIOSchema):
@@ -109,6 +110,7 @@ class PainPointInputSchema(BaseIOSchema):
     industry: str = Field(default="", description="Secteur d'activité")
     target_persona: str = Field(default="", description="Persona cible (vient de PersonaExtractorAgent)")
     product_category: str = Field(default="", description="Catégorie de produit")
+    website_content: str = Field(default="", description="Contenu pré-scrapé du site (optionnel)")
 
 
 class PainPointOutputSchema(BaseIOSchema):
@@ -147,6 +149,7 @@ class SignalGeneratorInputSchema(BaseIOSchema):
     industry: str = Field(default="", description="Secteur d'activité")
     product_category: str = Field(default="", description="Catégorie de produit (vient de PersonaExtractorAgent)")
     target_persona: str = Field(default="", description="Persona cible (vient de PersonaExtractorAgent)")
+    website_content: str = Field(default="", description="Contenu pré-scrapé du site (optionnel)")
 
 
 class SignalGeneratorOutputSchema(BaseIOSchema):
@@ -191,10 +194,12 @@ class SystemBuilderInputSchema(BaseIOSchema):
     Informations pour identifier les systèmes/processus de l'entreprise.
     """
     company_name: str = Field(..., description="Nom de l'entreprise")
+    website: str = Field(default="", description="URL du site web")
     target_persona: str = Field(default="", description="Persona cible (vient d'Agent 1)")
     specific_target_1: str = Field(default="", description="Premier ciblage (vient d'Agent 4)")
     specific_target_2: str = Field(default="", description="Deuxième ciblage (vient d'Agent 4)")
     problem_specific: str = Field(default="", description="Pain point (vient d'Agent 3)")
+    website_content: str = Field(default="", description="Contenu pré-scrapé du site (optionnel)")
 
 
 class SystemBuilderOutputSchema(BaseIOSchema):
@@ -234,9 +239,11 @@ class CaseStudyInputSchema(BaseIOSchema):
     Informations pour générer un résultat de case study pertinent.
     """
     company_name: str = Field(..., description="Nom de l'entreprise")
+    website: str = Field(default="", description="URL du site web")
     industry: str = Field(default="", description="Secteur d'activité")
     target_persona: str = Field(default="", description="Persona cible")
     problem_specific: str = Field(default="", description="Pain point spécifique")
+    website_content: str = Field(default="", description="Contenu pré-scrapé du site (optionnel)")
 
 
 class CaseStudyOutputSchema(BaseIOSchema):
