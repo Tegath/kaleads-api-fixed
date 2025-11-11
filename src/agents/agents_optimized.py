@@ -100,7 +100,8 @@ class PersonaExtractorAgentOptimized:
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
-        enable_scraping: bool = True
+        enable_scraping: bool = True,
+        client_context: Optional[str] = None
     ):
         """
         Initialize optimized persona extractor.
@@ -109,6 +110,7 @@ class PersonaExtractorAgentOptimized:
             api_key: OpenRouter API key
             model: Override model (default: auto-select DeepSeek)
             enable_scraping: If True, scrape website automatically
+            client_context: Context about the client doing the prospecting (for proper targeting)
         """
         client, final_model = create_openrouter_client(
             api_key=api_key,
@@ -116,12 +118,22 @@ class PersonaExtractorAgentOptimized:
             agent_type="persona_extractor"
         )
 
+        background = [
+            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+        ]
+
+        if client_context:
+            background.append(f"CONTEXT: {client_context}")
+
+        background.extend([
+            "You are a persona extraction expert.",
+            "Your job is to identify the target buyer persona and product category OF THE PROSPECT COMPANY.",
+            "You analyze company websites and industry data to determine who makes purchasing decisions.",
+            "IMPORTANT: The persona/product you identify is what the PROSPECT company sells, not what YOUR client sells.",
+        ])
+
         system_prompt_generator = SystemPromptGenerator(
-            background=[
-                "You are a persona extraction expert.",
-                "Your job is to identify the target buyer persona and product category.",
-                "You analyze company websites and industry data to determine who makes purchasing decisions.",
-            ],
+            background=background,
             steps=[
                 "1. Review the company name, website, and industry.",
                 "2. If website content is provided, analyze it for persona clues (job titles, department mentions, case studies).",
@@ -180,7 +192,8 @@ class CompetitorFinderAgentOptimized:
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
-        enable_scraping: bool = True
+        enable_scraping: bool = True,
+        client_context: Optional[str] = None
     ):
         client, final_model = create_openrouter_client(
             api_key=api_key,
@@ -188,12 +201,22 @@ class CompetitorFinderAgentOptimized:
             agent_type="competitor_finder"
         )
 
+        background = [
+            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+        ]
+
+        if client_context:
+            background.append(f"CONTEXT: {client_context}")
+
+        background.extend([
+            "You are a competitive intelligence expert.",
+            "Your job is to identify the main competitor that the prospect likely uses FOR THEIR PRODUCT.",
+            "You analyze the product category and industry to determine which competitor is most relevant.",
+            "IMPORTANT: Find competitors of the PROSPECT's product, not competitors of YOUR client.",
+        ])
+
         system_prompt_generator = SystemPromptGenerator(
-            background=[
-                "You are a competitive intelligence expert.",
-                "Your job is to identify the main competitor that the prospect likely uses.",
-                "You analyze the product category and industry to determine which competitor is most relevant.",
-            ],
+            background=background,
             steps=[
                 "1. Review the product category (e.g., 'CRM Software', 'Marketing Automation').",
                 "2. Identify the market-leading competitor in that category.",
@@ -242,7 +265,8 @@ class PainPointAgentOptimized:
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
-        enable_scraping: bool = True
+        enable_scraping: bool = True,
+        client_context: Optional[str] = None
     ):
         client, final_model = create_openrouter_client(
             api_key=api_key,
@@ -250,12 +274,22 @@ class PainPointAgentOptimized:
             agent_type="pain_point"
         )
 
+        background = [
+            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+        ]
+
+        if client_context:
+            background.append(f"CONTEXT: {client_context}")
+
+        background.extend([
+            "You are a pain point identification expert.",
+            "Your job is to identify the specific problem the target persona faces THAT YOUR CLIENT'S PRODUCT CAN SOLVE.",
+            "You analyze the persona, product category, and industry to determine their biggest challenge RELATED TO YOUR CLIENT'S OFFERING.",
+            "CRITICAL: The pain point must be something YOUR CLIENT can solve, not just any problem the prospect has.",
+        ])
+
         system_prompt_generator = SystemPromptGenerator(
-            background=[
-                "You are a pain point identification expert.",
-                "Your job is to identify the specific problem the target persona faces.",
-                "You analyze the persona, product category, and industry to determine their biggest challenge.",
-            ],
+            background=background,
             steps=[
                 "1. Review the target persona and product category.",
                 "2. Identify the most common pain point for that persona in that industry.",
@@ -303,7 +337,8 @@ class SignalGeneratorAgentOptimized:
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
-        enable_scraping: bool = True
+        enable_scraping: bool = True,
+        client_context: Optional[str] = None
     ):
         client, final_model = create_openrouter_client(
             api_key=api_key,
@@ -311,12 +346,21 @@ class SignalGeneratorAgentOptimized:
             agent_type="signal_generator"
         )
 
+        background = [
+            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+        ]
+
+        if client_context:
+            background.append(f"CONTEXT: {client_context}")
+
+        background.extend([
+            "You are a buying signal detection expert.",
+            "Your job is to identify specific signals that indicate the prospect is ready to buy YOUR CLIENT'S PRODUCT.",
+            "You analyze company data and website content for trigger events RELEVANT TO YOUR CLIENT'S OFFERING.",
+        ])
+
         system_prompt_generator = SystemPromptGenerator(
-            background=[
-                "You are a buying signal detection expert.",
-                "Your job is to identify specific signals that indicate the prospect is ready to buy.",
-                "You analyze company data and website content for trigger events.",
-            ],
+            background=background,
             steps=[
                 "1. Review company name, industry, and website.",
                 "2. Look for buying signals: funding announcements, hiring, product launches, expansions.",
@@ -364,7 +408,8 @@ class SystemBuilderAgentOptimized:
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
-        enable_scraping: bool = True
+        enable_scraping: bool = True,
+        client_context: Optional[str] = None
     ):
         client, final_model = create_openrouter_client(
             api_key=api_key,
@@ -372,12 +417,21 @@ class SystemBuilderAgentOptimized:
             agent_type="system_builder"
         )
 
+        background = [
+            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+        ]
+
+        if client_context:
+            background.append(f"CONTEXT: {client_context}")
+
+        background.extend([
+            "You are a systems/processes identification expert.",
+            "Your job is to identify which internal systems/processes the prospect uses FOR THEIR BUSINESS OPERATIONS.",
+            "You analyze the industry and product category to determine likely tech stack and workflows.",
+        ])
+
         system_prompt_generator = SystemPromptGenerator(
-            background=[
-                "You are a systems/processes identification expert.",
-                "Your job is to identify which internal systems/processes the prospect uses.",
-                "You analyze the industry and product category to determine likely tech stack and workflows.",
-            ],
+            background=background,
             steps=[
                 "1. Review company industry and product category.",
                 "2. Identify 3 specific systems/processes they likely use.",
@@ -423,7 +477,8 @@ class CaseStudyAgentOptimized:
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
-        enable_scraping: bool = True
+        enable_scraping: bool = True,
+        client_context: Optional[str] = None
     ):
         client, final_model = create_openrouter_client(
             api_key=api_key,
@@ -431,12 +486,22 @@ class CaseStudyAgentOptimized:
             agent_type="case_study"
         )
 
+        background = [
+            "CRITICAL: You MUST respond ONLY in FRENCH (français). All outputs must be in French.",
+        ]
+
+        if client_context:
+            background.append(f"CONTEXT: {client_context}")
+
+        background.extend([
+            "You are a case study crafting expert.",
+            "Your job is to create a compelling, specific result statement showing how YOUR CLIENT helped a similar company.",
+            "You synthesize the pain point, impact, and solution into a measurable outcome that YOUR CLIENT delivered.",
+            "CRITICAL: The case study must show YOUR CLIENT solving the problem, not the prospect.",
+        ])
+
         system_prompt_generator = SystemPromptGenerator(
-            background=[
-                "You are a case study crafting expert.",
-                "Your job is to create a compelling, specific result statement.",
-                "You synthesize the pain point, impact, and solution into a measurable outcome.",
-            ],
+            background=background,
             steps=[
                 "1. Review the problem_specific and impact_measurable.",
                 "2. Create a result that directly addresses the problem with quantified improvement.",

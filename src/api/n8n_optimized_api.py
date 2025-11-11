@@ -256,31 +256,40 @@ async def generate_email_with_agents(
     supabase_client = SupabaseClient()
     client_context = supabase_client.load_client_context(client_id)
 
-    # Initialize agents with model preference
+    # Build context string for agents
+    client_personas_str = ", ".join([p.get("title", "") for p in client_context.personas[:2]]) if client_context.personas else "solutions diverses"
+    context_str = (
+        f"You work for {client_context.client_name}. "
+        f"Your client's product/service: {client_personas_str}. "
+        f"You are prospecting TO the prospect company (they are potential BUYERS of your client's services). "
+        f"Focus on problems that YOUR CLIENT ({client_context.client_name}) can solve with their offering."
+    )
+
+    # Initialize agents with model preference AND client context
     if model_preference == "cheap":
         # Ultra-cheap models
-        persona_agent = PersonaExtractorAgentOptimized(model="deepseek/deepseek-chat", enable_scraping=enable_scraping)
-        competitor_agent = CompetitorFinderAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping)
-        pain_agent = PainPointAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping)
-        signal_agent = SignalGeneratorAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping)
-        system_agent = SystemBuilderAgentOptimized(model="deepseek/deepseek-chat", enable_scraping=enable_scraping)
-        case_agent = CaseStudyAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping)
+        persona_agent = PersonaExtractorAgentOptimized(model="deepseek/deepseek-chat", enable_scraping=enable_scraping, client_context=context_str)
+        competitor_agent = CompetitorFinderAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping, client_context=context_str)
+        pain_agent = PainPointAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping, client_context=context_str)
+        signal_agent = SignalGeneratorAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping, client_context=context_str)
+        system_agent = SystemBuilderAgentOptimized(model="deepseek/deepseek-chat", enable_scraping=enable_scraping, client_context=context_str)
+        case_agent = CaseStudyAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping, client_context=context_str)
     elif model_preference == "quality":
         # Premium models
-        persona_agent = PersonaExtractorAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping)
-        competitor_agent = CompetitorFinderAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping)
-        pain_agent = PainPointAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping)
-        signal_agent = SignalGeneratorAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping)
-        system_agent = SystemBuilderAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping)
-        case_agent = CaseStudyAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping)
+        persona_agent = PersonaExtractorAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
+        competitor_agent = CompetitorFinderAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
+        pain_agent = PainPointAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
+        signal_agent = SignalGeneratorAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
+        system_agent = SystemBuilderAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
+        case_agent = CaseStudyAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
     else:  # balanced
         # Mix of cheap and mid-tier
-        persona_agent = PersonaExtractorAgentOptimized(enable_scraping=enable_scraping)
-        competitor_agent = CompetitorFinderAgentOptimized(enable_scraping=enable_scraping)
-        pain_agent = PainPointAgentOptimized(enable_scraping=enable_scraping)
-        signal_agent = SignalGeneratorAgentOptimized(enable_scraping=enable_scraping)
-        system_agent = SystemBuilderAgentOptimized(enable_scraping=enable_scraping)
-        case_agent = CaseStudyAgentOptimized(enable_scraping=enable_scraping)
+        persona_agent = PersonaExtractorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
+        competitor_agent = CompetitorFinderAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
+        pain_agent = PainPointAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
+        signal_agent = SignalGeneratorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
+        system_agent = SystemBuilderAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
+        case_agent = CaseStudyAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
 
     # Agent 1: Persona
     persona_result = persona_agent.run(
