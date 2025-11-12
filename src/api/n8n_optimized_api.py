@@ -601,9 +601,12 @@ async def generate_email(request: GenerateEmailRequest):
         best_result["attempts"] = attempt if "attempts" not in best_result else best_result["attempts"]
         best_result["validation_attempts"] = validation_attempts if validation_attempts else []
 
+        # Extract fields that are passed explicitly to avoid duplicate keyword arguments
+        quality_score = best_result.pop("quality_score", 0)
+
         return GenerateEmailResponse(
             success=True,
-            quality_score=best_result.get("quality_score", 0),
+            quality_score=quality_score,
             model_used=model_pref,
             **best_result
         )
