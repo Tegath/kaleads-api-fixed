@@ -29,6 +29,10 @@ from src.agents.agents_optimized import (
     SystemBuilderAgentOptimized,
     CaseStudyAgentOptimized,
 )
+from src.agents.validator_agent import (
+    EmailValidatorAgent,
+    EmailValidationInputSchema,
+)
 from src.agents.pci_agent import PCIFilterAgent, batch_filter_contacts
 from src.providers.supabase_client import SupabaseClient
 from src.schemas.agent_schemas_v2 import (
@@ -41,10 +45,14 @@ from src.schemas.agent_schemas_v2 import (
 )
 
 app = FastAPI(
-    title="Optimized n8n Email Generation API",
-    description="Cost-optimized multi-agent email generation with OpenRouter",
-    version="2.0.0"
+    title="Optimized n8n Email Generation API with Validation",
+    description="Cost-optimized multi-agent email generation with OpenRouter + Email Validation Loop",
+    version="2.1.0"
 )
+
+# Feedback loop configuration
+MAX_RETRIES = 3  # Maximum number of generation attempts
+QUALITY_THRESHOLD = 95  # Minimum quality score to accept (0-100)
 
 # CORS
 app.add_middleware(
@@ -258,14 +266,38 @@ async def generate_email_with_agents(
 
     # Build context string for agents - EXPLICIT role definition
     client_personas_str = ", ".join([p.get("title", "") for p in client_context.personas[:2]]) if client_context.personas else "solutions diverses"
+
+    # Extract what problem the client solves (value proposition)
+    # Try to get from personas first, otherwise use default mapping
+    pain_solved = None
+    if client_context.personas:
+        # Check if personas have a 'pain_point_solved' or 'value_proposition' field
+        first_persona = client_context.personas[0]
+        pain_solved = first_persona.get("pain_point_solved") or first_persona.get("value_proposition")
+
+    # Default mapping if not found in personas
+    if not pain_solved:
+        client_name_lower = client_context.client_name.lower()
+        if "kaleads" in client_name_lower or "lead" in client_name_lower:
+            pain_solved = "génération de leads B2B qualifiés via l'automatisation"
+        elif "sales" in client_name_lower or "vente" in client_name_lower:
+            pain_solved = "optimisation des processus de vente et augmentation du pipeline"
+        elif "marketing" in client_name_lower:
+            pain_solved = "automatisation marketing et génération de demande"
+        else:
+            pain_solved = "amélioration de l'efficacité opérationnelle"
+
     context_str = f"""🎯 CRITICAL CONTEXT - YOUR ROLE:
 - You work FOR: {client_context.client_name}
-- Your client's offering: {client_personas_str}
-- You are prospecting TO: {contact.company_name}
-- {contact.company_name} is a POTENTIAL CLIENT who might BUY {client_context.client_name}'s services
-- {contact.company_name} is NOT your client, they are the PROSPECT/TARGET
-- Focus ONLY on problems that {client_context.client_name} can solve with their offering
-- The pain points must be relevant to what {client_context.client_name} sells ({client_personas_str})"""
+- What YOUR CLIENT SELLS: {client_personas_str}
+- What PROBLEM your client SOLVES: {pain_solved}
+- You are prospecting TO: {contact.company_name} (a POTENTIAL BUYER)
+- {contact.company_name} needs MORE CLIENTS/LEADS for their business
+- Focus on: How {client_context.client_name} can help {contact.company_name} GET MORE CLIENTS
+- The pain point must be: "{contact.company_name} struggles to get enough qualified leads/clients"
+- NOT: "{contact.company_name} has internal operational problems"
+- Example good pain: "difficulté à générer suffisamment de leads qualifiés pour vos services"
+- Example bad pain: "processus RH inefficaces" (unless client sells HR solutions)"""
 
     # Initialize agents with model preference AND client context
     if model_preference == "cheap":
@@ -484,27 +516,96 @@ async def generate_email(request: GenerateEmailRequest):
                     fallback_levels={}
                 )
 
-        # Generate email
-        model_pref = request.options.get("model_preference", "cheap")
+        # Generate email with feedback loop
+        model_pref = request.options.get("model_preference", "balanced")  # Default to balanced for quality
         enable_scraping = request.options.get("enable_scraping", True)
+        enable_validation = request.options.get("enable_validation", True)  # New option
 
-        result = await generate_email_with_agents(
-            contact=request.contact,
-            client_id=request.client_id,
-            template_content=request.template_content,
-            enable_scraping=enable_scraping,
-            model_preference=model_pref
-        )
+        # Initialize validator
+        validator = EmailValidatorAgent() if enable_validation else None
 
-        # Simple quality score (based on fallback levels)
-        avg_fallback = sum(result["fallback_levels"].values()) / len(result["fallback_levels"])
-        quality_score = max(0, min(100, int(100 - (avg_fallback * 15))))
+        best_result = None
+        best_quality_score = 0
+        validation_attempts = []
+
+        for attempt in range(1, MAX_RETRIES + 1):
+            # Generate email
+            result = await generate_email_with_agents(
+                contact=request.contact,
+                client_id=request.client_id,
+                template_content=request.template_content,
+                enable_scraping=enable_scraping,
+                model_preference=model_pref
+            )
+
+            # Validate if enabled
+            if validator:
+                try:
+                    # Load client context for validation
+                    supabase_client = SupabaseClient()
+                    client_context = supabase_client.load_client_context(request.client_id)
+                    client_personas_str = ", ".join([p.get("title", "") for p in client_context.personas[:2]]) if client_context.personas else "solutions diverses"
+
+                    # Validate
+                    validation = validator.run(EmailValidationInputSchema(
+                        email_content=result["email_content"],
+                        contact_company=request.contact.company_name,
+                        client_name=client_context.client_name,
+                        client_offering=client_personas_str,
+                        scraped_content=""  # Could pass combined scraped content here
+                    ))
+
+                    quality_score = validation.quality_score
+                    validation_attempts.append({
+                        "attempt": attempt,
+                        "quality_score": quality_score,
+                        "issues": validation.issues,
+                        "suggestions": validation.suggestions
+                    })
+
+                    # Track best result
+                    if quality_score > best_quality_score:
+                        best_quality_score = quality_score
+                        best_result = result
+                        best_result["quality_score"] = quality_score
+                        best_result["validation_passed"] = validation.is_valid
+                        best_result["validation_issues"] = validation.issues
+
+                    # If quality is good enough, stop trying
+                    if quality_score >= QUALITY_THRESHOLD:
+                        best_result["attempts"] = attempt
+                        best_result["validation_attempts"] = validation_attempts
+                        break
+
+                except Exception as e:
+                    # If validation fails, use fallback quality score
+                    avg_fallback = sum(result["fallback_levels"].values()) / len(result["fallback_levels"])
+                    quality_score = max(0, min(100, int(100 - (avg_fallback * 15))))
+                    result["quality_score"] = quality_score
+                    result["validation_error"] = str(e)
+                    best_result = result
+                    break
+            else:
+                # No validation, use fallback quality score
+                avg_fallback = sum(result["fallback_levels"].values()) / len(result["fallback_levels"])
+                quality_score = max(0, min(100, int(100 - (avg_fallback * 15))))
+                result["quality_score"] = quality_score
+                best_result = result
+                break
+
+        # Add validation metadata
+        if best_result is None:
+            best_result = result
+            best_result["quality_score"] = 0
+
+        best_result["attempts"] = attempt if "attempts" not in best_result else best_result["attempts"]
+        best_result["validation_attempts"] = validation_attempts if validation_attempts else []
 
         return GenerateEmailResponse(
             success=True,
-            quality_score=quality_score,
+            quality_score=best_result.get("quality_score", 0),
             model_used=model_pref,
-            **result
+            **best_result
         )
 
     except Exception as e:

@@ -38,7 +38,8 @@ from src.providers.openrouter_client import (
     ModelTier,
     get_recommended_model_for_agent,
 )
-from src.utils.scraping import scrape_for_agent_sync, preprocess_scraped_content
+# NEW: Use Crawl4AI for advanced scraping
+from src.services.crawl4ai_service import scrape_for_agent_sync, preprocess_scraped_content
 
 
 def create_openrouter_client(
@@ -178,7 +179,7 @@ class PersonaExtractorAgentOptimized:
             try:
                 scraped = scrape_for_agent_sync("persona_extractor", input_data.website)
                 homepage = scraped.get("/", "")
-                input_data.website_content = preprocess_scraped_content(homepage, max_tokens=2000)
+                input_data.website_content = preprocess_scraped_content(homepage, max_tokens=5000)
             except Exception:
                 pass  # Continue without scraping
 
@@ -255,7 +256,7 @@ class CompetitorFinderAgentOptimized:
                 # Combine pricing + features pages
                 content_parts = [scraped.get(page, "") for page in ["/pricing", "/features"]]
                 combined = "\n\n".join(content_parts)
-                input_data.website_content = preprocess_scraped_content(combined, max_tokens=2000)
+                input_data.website_content = preprocess_scraped_content(combined, max_tokens=5000)
             except Exception:
                 pass
 
@@ -309,9 +310,18 @@ class PainPointAgentOptimized:
                 "4. Quantify the impact in measurable terms (time, money, productivity).",
             ],
             output_instructions=[
+                "⚠️ TEMPLATE CONTEXT: Your output will be inserted into an email template.",
+                "CRITICAL CAPITALIZATION RULES:",
+                "- Start with LOWERCASE for problem_specific (e.g., 'la prospection manuelle' NOT 'La prospection manuelle')",
+                "- NO period at the end (template adds punctuation)",
+                "- Create a FRAGMENT, not a complete sentence",
+                "Example template: 'En tant que {{persona}}, tu fais face à {{problem}}'",
+                "Correct problem: 'la difficulté de générer des leads qualifiés'",
+                "WRONG problem: 'La difficulté de générer des leads qualifiés.'",
+                "",
                 "Return JSON with problem_specific and impact_measurable.",
-                "Be specific: 'Manual prospecting wastes 15h/week' not 'Inefficient processes'.",
-                "Impact should be quantified: '50% time savings', '$100K lost revenue'.",
+                "Be specific: 'la prospection manuelle qui consomme 15h/semaine' not 'des processus inefficaces'.",
+                "Impact should be quantified: '50% de perte de temps', '100K€ de revenus perdus'.",
             ],
         )
 
@@ -331,7 +341,7 @@ class PainPointAgentOptimized:
                 scraped = scrape_for_agent_sync("pain_point", input_data.website)
                 content_parts = [scraped.get(page, "") for page in ["/customers", "/case-studies", "/testimonials"]]
                 combined = "\n\n".join(content_parts)
-                input_data.website_content = preprocess_scraped_content(combined, max_tokens=2000)
+                input_data.website_content = preprocess_scraped_content(combined, max_tokens=5000)
             except Exception:
                 pass
 
@@ -384,9 +394,18 @@ class SignalGeneratorAgentOptimized:
                 "4. Generate 2 specific targets/goals the persona likely has.",
             ],
             output_instructions=[
+                "⚠️ TEMPLATE CONTEXT: Your outputs will be inserted into an email template.",
+                "CRITICAL CAPITALIZATION RULES:",
+                "- Start with LOWERCASE (e.g., 'vient de lever 2M€' NOT 'Vient de lever 2M€')",
+                "- NO period/punctuation at the end (template adds punctuation)",
+                "- Create a FRAGMENT that flows naturally when inserted mid-sentence",
+                "Example template: 'J'ai vu que {{company}} {{signal}}'",
+                "Correct signal: 'vient de lever 2M€ en série A'",
+                "WRONG signal: 'Vient de lever 2M€ en série A.'",
+                "",
                 "Return JSON with specific_signal_1, specific_signal_2, specific_target_1, specific_target_2.",
-                "Signals should be specific: 'Just raised Series B' not 'Growing company'.",
-                "Targets should be measurable: 'Increase pipeline by 50%' not 'Improve sales'.",
+                "Signals should be specific: 'vient de lever une série B' not 'est une entreprise en croissance'.",
+                "Targets should be measurable: 'augmenter le pipeline de 50%' not 'améliorer les ventes'.",
             ],
         )
 
@@ -406,7 +425,7 @@ class SignalGeneratorAgentOptimized:
                 scraped = scrape_for_agent_sync("signal_generator", input_data.website)
                 content_parts = [scraped.get(page, "") for page in ["/", "/blog"]]
                 combined = "\n\n".join(content_parts)
-                input_data.website_content = preprocess_scraped_content(combined, max_tokens=2000)
+                input_data.website_content = preprocess_scraped_content(combined, max_tokens=5000)
             except Exception:
                 pass
 
@@ -479,7 +498,7 @@ class SystemBuilderAgentOptimized:
                 scraped = scrape_for_agent_sync("system_builder", input_data.website)
                 content_parts = [scraped.get(page, "") for page in ["/integrations", "/api"]]
                 combined = "\n\n".join(content_parts)
-                input_data.website_content = preprocess_scraped_content(combined, max_tokens=2000)
+                input_data.website_content = preprocess_scraped_content(combined, max_tokens=5000)
             except Exception:
                 pass
 
@@ -532,9 +551,18 @@ class CaseStudyAgentOptimized:
                 "3. If website content (case studies) is available, use actual results as inspiration.",
             ],
             output_instructions=[
+                "⚠️ TEMPLATE CONTEXT: Your output will be inserted into an email template.",
+                "CRITICAL CAPITALIZATION RULES:",
+                "- Start with UPPERCASE (this appears after 'On a aidé:')",
+                "- NO period at the end (template adds punctuation)",
+                "- Create a complete sentence that flows after 'On a aidé:'",
+                "Example template: 'On a aidé: {{case_study}}'",
+                "Correct case_study: 'TechCo à augmenter son pipeline de 300% en 6 mois'",
+                "WRONG case_study: 'techco à augmenter son pipeline de 300% en 6 mois.'",
+                "",
                 "Return JSON with case_study_result.",
-                "Be specific and quantified: 'Helped TechCo increase pipeline by 300% in 6 months' not 'Improved sales'.",
-                "Use past tense, third person.",
+                "Be specific and quantified: 'TechCo à augmenter son pipeline de 300% en 6 mois' not 'des entreprises à améliorer leurs ventes'.",
+                "Use past tense, third person, start with company name or 'une entreprise similaire'.",
             ],
         )
 
@@ -554,7 +582,7 @@ class CaseStudyAgentOptimized:
                 scraped = scrape_for_agent_sync("case_study", input_data.website)
                 content_parts = [scraped.get(page, "") for page in ["/customers", "/case-studies"]]
                 combined = "\n\n".join(content_parts)
-                input_data.website_content = preprocess_scraped_content(combined, max_tokens=2000)
+                input_data.website_content = preprocess_scraped_content(combined, max_tokens=5000)
             except Exception:
                 pass
 
