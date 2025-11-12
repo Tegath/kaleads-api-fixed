@@ -142,6 +142,13 @@ class GenerateEmailResponse(BaseModel):
     quality_score: int
     fallback_levels: Dict[str, int]
 
+    # Validation metadata (new in v2.1)
+    validation_passed: Optional[bool] = None
+    validation_issues: Optional[List[str]] = None
+    attempts: int = 1
+    validation_attempts: List[Dict[str, Any]] = []
+    validation_error: Optional[str] = None
+
 
 class PCIFilterRequest(BaseModel):
     """Request for PCI filtering."""
@@ -603,11 +610,21 @@ async def generate_email(request: GenerateEmailRequest):
 
         # Extract fields that are passed explicitly to avoid duplicate keyword arguments
         quality_score = best_result.pop("quality_score", 0)
+        validation_passed = best_result.pop("validation_passed", None)
+        validation_issues = best_result.pop("validation_issues", None)
+        attempts = best_result.pop("attempts", 1)
+        validation_attempts_list = best_result.pop("validation_attempts", [])
+        validation_error = best_result.pop("validation_error", None)
 
         return GenerateEmailResponse(
             success=True,
             quality_score=quality_score,
             model_used=model_pref,
+            validation_passed=validation_passed,
+            validation_issues=validation_issues,
+            attempts=attempts,
+            validation_attempts=validation_attempts_list,
+            validation_error=validation_error,
             **best_result
         )
 
