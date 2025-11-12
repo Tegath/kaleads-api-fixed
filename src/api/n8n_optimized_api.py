@@ -306,31 +306,43 @@ async def generate_email_with_agents(
 - Example good pain: "difficulté à générer suffisamment de leads qualifiés pour vos services"
 - Example bad pain: "processus RH inefficaces" (unless client sells HR solutions)"""
 
+    # NEW: Create structured client context dict for agents that accept it
+    client_context_dict = {
+        "client_name": client_context.client_name,
+        "offerings": [p.get("title", "") for p in client_context.personas[:3]] if client_context.personas else [],
+        "pain_solved": pain_solved,
+        "target_industries": getattr(client_context, 'target_industries', []),
+        "real_case_studies": getattr(client_context, 'case_studies', []),  # If available in Supabase
+        # Example case_studies format: [{"company": "TechCo", "result": "augmenter son pipeline de 300%"}]
+    }
+
     # Initialize agents with model preference AND client context
+    # NOTE: PersonaExtractor, Competitor, Signal, System use context_str (string)
+    #       PainPoint and CaseStudy use client_context_dict (structured dict)
     if model_preference == "cheap":
-        # Ultra-cheap models
-        persona_agent = PersonaExtractorAgentOptimized(model="deepseek/deepseek-chat", enable_scraping=enable_scraping, client_context=context_str)
+        # Ultra-cheap models - UPGRADED: agents now use better models by default
+        persona_agent = PersonaExtractorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)  # Now GPT-4o-mini
         competitor_agent = CompetitorFinderAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping, client_context=context_str)
-        pain_agent = PainPointAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping, client_context=context_str)
-        signal_agent = SignalGeneratorAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping, client_context=context_str)
+        pain_agent = PainPointAgentOptimized(enable_scraping=enable_scraping, client_context=client_context_dict)  # Now GPT-4o-mini + dict
+        signal_agent = SignalGeneratorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)  # Now GPT-4o
         system_agent = SystemBuilderAgentOptimized(model="deepseek/deepseek-chat", enable_scraping=enable_scraping, client_context=context_str)
-        case_agent = CaseStudyAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping, client_context=context_str)
+        case_agent = CaseStudyAgentOptimized(enable_scraping=enable_scraping, client_context=client_context_dict)  # Now GPT-4o-mini + dict
     elif model_preference == "quality":
         # Premium models
         persona_agent = PersonaExtractorAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
         competitor_agent = CompetitorFinderAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
-        pain_agent = PainPointAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
+        pain_agent = PainPointAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=client_context_dict)
         signal_agent = SignalGeneratorAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
         system_agent = SystemBuilderAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
-        case_agent = CaseStudyAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
-    else:  # balanced
-        # Mix of cheap and mid-tier
-        persona_agent = PersonaExtractorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
+        case_agent = CaseStudyAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=client_context_dict)
+    else:  # balanced - DEFAULT NOW USES IMPROVED AGENTS
+        # Mix of cheap and mid-tier - agents use their upgraded defaults
+        persona_agent = PersonaExtractorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)  # GPT-4o-mini
         competitor_agent = CompetitorFinderAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
-        pain_agent = PainPointAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
-        signal_agent = SignalGeneratorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
+        pain_agent = PainPointAgentOptimized(enable_scraping=enable_scraping, client_context=client_context_dict)  # GPT-4o-mini + dict
+        signal_agent = SignalGeneratorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)  # GPT-4o
         system_agent = SystemBuilderAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
-        case_agent = CaseStudyAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
+        case_agent = CaseStudyAgentOptimized(enable_scraping=enable_scraping, client_context=client_context_dict)  # GPT-4o-mini + dict
 
     # Agent 1: Persona
     persona_result = persona_agent.run(
@@ -553,13 +565,35 @@ async def generate_email(request: GenerateEmailRequest):
                     client_context = supabase_client.load_client_context(request.client_id)
                     client_personas_str = ", ".join([p.get("title", "") for p in client_context.personas[:2]]) if client_context.personas else "solutions diverses"
 
+                    # NEW: Scrape prospect website for validation (to detect hallucinations)
+                    scraped_content_for_validation = ""
+                    if enable_scraping and request.contact.website:
+                        try:
+                            from src.services.crawl4ai_service import scrape_for_agent_sync, preprocess_scraped_content
+                            scraped = scrape_for_agent_sync("validation", request.contact.website)
+                            # Combine relevant pages for validation
+                            content_parts = [
+                                scraped.get("/", ""),
+                                scraped.get("/blog", ""),
+                                scraped.get("/news", ""),
+                                scraped.get("/actualites", ""),
+                                scraped.get("/press", ""),
+                                scraped.get("/careers", ""),
+                                scraped.get("/about", ""),
+                            ]
+                            combined = "\n\n".join([c for c in content_parts if c])
+                            scraped_content_for_validation = preprocess_scraped_content(combined, max_tokens=8000)
+                        except Exception as e:
+                            # If scraping fails, continue without it
+                            scraped_content_for_validation = ""
+
                     # Validate
                     validation = validator.run(EmailValidationInputSchema(
                         email_content=result["email_content"],
                         contact_company=request.contact.company_name,
                         client_name=client_context.client_name,
                         client_offering=client_personas_str,
-                        scraped_content=""  # Could pass combined scraped content here
+                        scraped_content=scraped_content_for_validation  # NOW PASSING REAL CONTENT
                     ))
 
                     quality_score = validation.quality_score
