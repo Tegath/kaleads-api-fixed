@@ -21,33 +21,33 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 import uuid
 
-from src.agents.agents_optimized import (
-    PersonaExtractorAgentOptimized,
-    CompetitorFinderAgentOptimized,
-    PainPointAgentOptimized,
-    SignalGeneratorAgentOptimized,
-    SystemBuilderAgentOptimized,
-    CaseStudyAgentOptimized,
+from src.agents.v3 import (
+    PersonaExtractorV3,
+    CompetitorFinderV3,
+    PainPointAnalyzerV3,
+    SignalDetectorV3,
+    SystemMapperV3,
+    ProofGeneratorV3,
 )
+from src.agents.v3.persona_extractor_v3 import PersonaExtractorInputSchema, PersonaExtractorOutputSchema
+from src.agents.v3.competitor_finder_v3 import CompetitorFinderInputSchema, CompetitorFinderOutputSchema
+from src.agents.v3.pain_point_analyzer_v3 import PainPointAnalyzerInputSchema, PainPointAnalyzerOutputSchema
+from src.agents.v3.signal_detector_v3 import SignalDetectorInputSchema, SignalDetectorOutputSchema
+from src.agents.v3.system_mapper_v3 import SystemMapperInputSchema, SystemMapperOutputSchema
+from src.agents.v3.proof_generator_v3 import ProofGeneratorInputSchema, ProofGeneratorOutputSchema
+
 from src.agents.validator_agent import (
     EmailValidatorAgent,
     EmailValidationInputSchema,
 )
 from src.agents.pci_agent import PCIFilterAgent, batch_filter_contacts
 from src.providers.supabase_client import SupabaseClient
-from src.schemas.agent_schemas_v2 import (
-    PersonaExtractorInputSchema,
-    CompetitorFinderInputSchema,
-    PainPointInputSchema,
-    SignalGeneratorInputSchema,
-    SystemBuilderInputSchema,
-    CaseStudyInputSchema,
-)
+from src.models.client_context import ClientContext
 
 app = FastAPI(
-    title="Optimized n8n Email Generation API with Validation",
-    description="Cost-optimized multi-agent email generation with OpenRouter + Email Validation Loop",
-    version="2.1.0"
+    title="n8n Email Generation API v3.0",
+    description="Context-aware multi-agent email generation with v3 agents (Tavily web search + ClientContext)",
+    version="3.0.0"
 )
 
 # Feedback loop configuration
@@ -267,84 +267,44 @@ async def generate_email_with_agents(
     """
     start_time = datetime.now()
 
-    # LOAD CLIENT CONTEXT
+    # LOAD CLIENT CONTEXT V3
     supabase_client = SupabaseClient()
-    client_context = supabase_client.load_client_context(client_id)
+    client_context = supabase_client.load_client_context_v3(client_id)
 
-    # Build context string for agents - EXPLICIT role definition
-    client_personas_str = ", ".join([p.get("title", "") for p in client_context.personas[:2]]) if client_context.personas else "solutions diverses"
+    # V3: Initialize agents with ClientContext (much simpler!)
+    # All v3 agents accept ClientContext and automatically adapt
+    persona_agent = PersonaExtractorV3(
+        enable_scraping=enable_scraping,
+        enable_tavily=True,
+        client_context=client_context
+    )
+    competitor_agent = CompetitorFinderV3(
+        enable_scraping=enable_scraping,
+        enable_tavily=True,
+        client_context=client_context
+    )
+    pain_agent = PainPointAnalyzerV3(
+        enable_scraping=enable_scraping,
+        enable_tavily=True,
+        client_context=client_context
+    )
+    signal_agent = SignalDetectorV3(
+        enable_scraping=enable_scraping,
+        enable_tavily=True,
+        client_context=client_context
+    )
+    system_agent = SystemMapperV3(
+        enable_scraping=enable_scraping,
+        enable_tavily=True,
+        client_context=client_context
+    )
+    proof_agent = ProofGeneratorV3(
+        enable_scraping=enable_scraping,
+        enable_tavily=True,
+        client_context=client_context
+    )
 
-    # Extract what problem the client solves (value proposition)
-    # Try to get from personas first, otherwise use default mapping
-    pain_solved = None
-    if client_context.personas:
-        # Check if personas have a 'pain_point_solved' or 'value_proposition' field
-        first_persona = client_context.personas[0]
-        pain_solved = first_persona.get("pain_point_solved") or first_persona.get("value_proposition")
-
-    # Default mapping if not found in personas
-    if not pain_solved:
-        client_name_lower = client_context.client_name.lower()
-        if "kaleads" in client_name_lower or "lead" in client_name_lower:
-            pain_solved = "génération de leads B2B qualifiés via l'automatisation"
-        elif "sales" in client_name_lower or "vente" in client_name_lower:
-            pain_solved = "optimisation des processus de vente et augmentation du pipeline"
-        elif "marketing" in client_name_lower:
-            pain_solved = "automatisation marketing et génération de demande"
-        else:
-            pain_solved = "amélioration de l'efficacité opérationnelle"
-
-    context_str = f"""🎯 CRITICAL CONTEXT - YOUR ROLE:
-- You work FOR: {client_context.client_name}
-- What YOUR CLIENT SELLS: {client_personas_str}
-- What PROBLEM your client SOLVES: {pain_solved}
-- You are prospecting TO: {contact.company_name} (a POTENTIAL BUYER)
-- {contact.company_name} needs MORE CLIENTS/LEADS for their business
-- Focus on: How {client_context.client_name} can help {contact.company_name} GET MORE CLIENTS
-- The pain point must be: "{contact.company_name} struggles to get enough qualified leads/clients"
-- NOT: "{contact.company_name} has internal operational problems"
-- Example good pain: "difficulté à générer suffisamment de leads qualifiés pour vos services"
-- Example bad pain: "processus RH inefficaces" (unless client sells HR solutions)"""
-
-    # NEW: Create structured client context dict for agents that accept it
-    client_context_dict = {
-        "client_name": client_context.client_name,
-        "offerings": [p.get("title", "") for p in client_context.personas[:3]] if client_context.personas else [],
-        "pain_solved": pain_solved,
-        "target_industries": getattr(client_context, 'target_industries', []),
-        "real_case_studies": getattr(client_context, 'case_studies', []),  # If available in Supabase
-        # Example case_studies format: [{"company": "TechCo", "result": "augmenter son pipeline de 300%"}]
-    }
-
-    # Initialize agents with model preference AND client context
-    # NOTE: PersonaExtractor, Competitor, Signal, System use context_str (string)
-    #       PainPoint and CaseStudy use client_context_dict (structured dict)
-    if model_preference == "cheap":
-        # Ultra-cheap models - UPGRADED: agents now use better models by default
-        persona_agent = PersonaExtractorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)  # Now GPT-4o-mini
-        competitor_agent = CompetitorFinderAgentOptimized(model="openai/gpt-4o-mini", enable_scraping=enable_scraping, client_context=context_str)
-        pain_agent = PainPointAgentOptimized(enable_scraping=enable_scraping, client_context=client_context_dict)  # Now GPT-4o-mini + dict
-        signal_agent = SignalGeneratorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)  # Now GPT-4o
-        system_agent = SystemBuilderAgentOptimized(model="deepseek/deepseek-chat", enable_scraping=enable_scraping, client_context=context_str)
-        case_agent = CaseStudyAgentOptimized(enable_scraping=enable_scraping, client_context=client_context_dict)  # Now GPT-4o-mini + dict
-    elif model_preference == "quality":
-        # Premium models
-        persona_agent = PersonaExtractorAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
-        competitor_agent = CompetitorFinderAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
-        pain_agent = PainPointAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=client_context_dict)
-        signal_agent = SignalGeneratorAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
-        system_agent = SystemBuilderAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=context_str)
-        case_agent = CaseStudyAgentOptimized(model="openai/gpt-4o", enable_scraping=enable_scraping, client_context=client_context_dict)
-    else:  # balanced - DEFAULT NOW USES IMPROVED AGENTS
-        # Mix of cheap and mid-tier - agents use their upgraded defaults
-        persona_agent = PersonaExtractorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)  # GPT-4o-mini
-        competitor_agent = CompetitorFinderAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
-        pain_agent = PainPointAgentOptimized(enable_scraping=enable_scraping, client_context=client_context_dict)  # GPT-4o-mini + dict
-        signal_agent = SignalGeneratorAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)  # GPT-4o
-        system_agent = SystemBuilderAgentOptimized(enable_scraping=enable_scraping, client_context=context_str)
-        case_agent = CaseStudyAgentOptimized(enable_scraping=enable_scraping, client_context=client_context_dict)  # GPT-4o-mini + dict
-
-    # Agent 1: Persona
+    # V3 Agent 1: Persona
     persona_result = persona_agent.run(
         PersonaExtractorInputSchema(
             company_name=contact.company_name,
@@ -354,32 +314,30 @@ async def generate_email_with_agents(
         )
     )
 
-    # Agent 2: Competitor
+    # V3 Agent 2: Competitor
     competitor_result = competitor_agent.run(
         CompetitorFinderInputSchema(
             company_name=contact.company_name,
             website=contact.website,
             industry=contact.industry or "",
-            product_category=persona_result.product_category,
+            product_category=f"{persona_result.role} in {persona_result.department}",  # Infer from persona
             website_content=""
         )
     )
 
-    # Agent 3: Pain Point
+    # V3 Agent 3: Pain Point (automatically adapts to client type!)
     pain_result = pain_agent.run(
-        PainPointInputSchema(
+        PainPointAnalyzerInputSchema(
             company_name=contact.company_name,
             website=contact.website,
             industry=contact.industry or "",
-            target_persona=persona_result.target_persona,
-            product_category=persona_result.product_category,
             website_content=""
         )
     )
 
-    # Agent 4: Signals
+    # V3 Agent 4: Signals
     signal_result = signal_agent.run(
-        SignalGeneratorInputSchema(
+        SignalDetectorInputSchema(
             company_name=contact.company_name,
             website=contact.website,
             industry=contact.industry or "",
@@ -387,30 +345,29 @@ async def generate_email_with_agents(
         )
     )
 
-    # Agent 5: Systems
+    # V3 Agent 5: Tech Stack
     system_result = system_agent.run(
-        SystemBuilderInputSchema(
+        SystemMapperInputSchema(
             company_name=contact.company_name,
             website=contact.website,
             industry=contact.industry or "",
-            product_category=persona_result.product_category,
+            product_category=f"{persona_result.role} tools",
             website_content=""
         )
     )
 
-    # Agent 6: Case Study
-    case_result = case_agent.run(
-        CaseStudyInputSchema(
+    # V3 Agent 6: Proof (renamed from CaseStudy)
+    proof_result = proof_agent.run(
+        ProofGeneratorInputSchema(
             company_name=contact.company_name,
             website=contact.website,
             industry=contact.industry or "",
-            problem_specific=pain_result.problem_specific,
-            impact_measurable=pain_result.impact_measurable,
             website_content=""
         )
     )
 
     # Prepare all variables for template rendering
+    # V3: Map new output fields to old variable names for backward compatibility
     variables = {
         # Contact info
         "first_name": contact.first_name,
@@ -419,38 +376,38 @@ async def generate_email_with_agents(
         "website": contact.website,
         "industry": contact.industry or "",
 
-        # Agent results
-        "target_persona": persona_result.target_persona,
-        "product_category": persona_result.product_category,
-        "competitor_name": competitor_result.competitor_name,
-        "competitor_product_category": competitor_result.competitor_product_category,
-        "problem_specific": pain_result.problem_specific,
-        "impact_measurable": pain_result.impact_measurable,
-        "case_study_result": case_result.case_study_result,
-        "specific_signal_1": signal_result.specific_signal_1,
-        "specific_signal_2": signal_result.specific_signal_2,
-        "specific_target_1": signal_result.specific_target_1,
-        "specific_target_2": signal_result.specific_target_2,
-        "system_1": system_result.system_1,
-        "system_2": system_result.system_2,
-        "system_3": system_result.system_3,
+        # Agent results (mapped from v3 outputs)
+        "target_persona": persona_result.role,  # v3: role instead of target_persona
+        "product_category": f"{persona_result.department} - {persona_result.seniority_level}",  # v3: constructed from role/department
+        "competitor_name": competitor_result.competitor_name,  # Same
+        "competitor_product_category": competitor_result.competitor_product_category,  # Same
+        "problem_specific": pain_result.pain_point_description,  # v3: pain_point_description
+        "impact_measurable": pain_result.pain_point_description,  # v3: reuse same field
+        "case_study_result": proof_result.proof_statement,  # v3: proof_statement instead of case_study_result
+        "specific_signal_1": signal_result.signal_description if signal_result.signal_type != "none" else "est en phase de croissance",  # v3: signal_description
+        "specific_signal_2": signal_result.relevance_to_client if signal_result.signal_type != "none" else "",  # v3: relevance
+        "specific_target_1": ", ".join(persona_result.likely_pain_points[:1]) if persona_result.likely_pain_points else "",  # v3: from persona
+        "specific_target_2": ", ".join(persona_result.likely_pain_points[1:2]) if len(persona_result.likely_pain_points) > 1 else "",  # v3: from persona
+        "system_1": system_result.relevant_tech[0] if system_result.relevant_tech else system_result.tech_stack[0] if system_result.tech_stack else "CRM",  # v3: from tech_stack
+        "system_2": system_result.relevant_tech[1] if len(system_result.relevant_tech) > 1 else system_result.tech_stack[1] if len(system_result.tech_stack) > 1 else "Email platform",
+        "system_3": system_result.relevant_tech[2] if len(system_result.relevant_tech) > 2 else system_result.tech_stack[2] if len(system_result.tech_stack) > 2 else "Analytics tool",
     }
 
     # Build email - use custom template if provided, otherwise use default
     if template_content:
         email_content = render_template(template_content, variables)
     else:
-        # Default template with CLIENT CONTEXT
+        # V3: Default template with ClientContext
         client_name = client_context.client_name
-        client_personas_str = ", ".join([p.get("title", "") for p in client_context.personas[:2]]) if client_context.personas else "nos solutions"
-        
+        client_offerings_str = client_context.get_offerings_str(limit=2)  # v3: method on ClientContext
+
         email_content = f"""Bonjour {contact.first_name},
 
-Je travaille chez {client_name}, spécialisé en {client_personas_str}.
+Je travaille chez {client_name}, spécialisé en {client_offerings_str}.
 
-J'ai remarqué que {contact.company_name} {signal_result.specific_signal_1}.
+J'ai remarqué que {contact.company_name} {variables['specific_signal_1']}.
 
-{case_result.case_study_result}
+{variables['case_study_result']}
 
 Seriez-vous ouvert(e) à un échange rapide?
 
@@ -461,19 +418,20 @@ L'équipe {client_name}"""
 
     return {
         "email_content": email_content,
-        "target_persona": persona_result.target_persona,
-        "product_category": persona_result.product_category,
-        "competitor_name": competitor_result.competitor_name,
-        "problem_specific": pain_result.problem_specific,
-        "impact_measurable": pain_result.impact_measurable,
-        "case_study_result": case_result.case_study_result,
-        "specific_signal_1": signal_result.specific_signal_1,
-        "specific_signal_2": signal_result.specific_signal_2,
-        "specific_target_1": signal_result.specific_target_1,
-        "specific_target_2": signal_result.specific_target_2,
-        "system_1": system_result.system_1,
-        "system_2": system_result.system_2,
-        "system_3": system_result.system_3,
+        # V3: Return variables using the mapped values
+        "target_persona": variables["target_persona"],
+        "product_category": variables["product_category"],
+        "competitor_name": variables["competitor_name"],
+        "problem_specific": variables["problem_specific"],
+        "impact_measurable": variables["impact_measurable"],
+        "case_study_result": variables["case_study_result"],
+        "specific_signal_1": variables["specific_signal_1"],
+        "specific_signal_2": variables["specific_signal_2"],
+        "specific_target_1": variables["specific_target_1"],
+        "specific_target_2": variables["specific_target_2"],
+        "system_1": variables["system_1"],
+        "system_2": variables["system_2"],
+        "system_3": variables["system_3"],
         "generation_time_seconds": generation_time,
         "cost_usd": estimate_cost(model_preference),
         "fallback_levels": {
@@ -482,7 +440,7 @@ L'équipe {client_name}"""
             "pain": pain_result.fallback_level,
             "signal": signal_result.fallback_level,
             "system": system_result.fallback_level,
-            "case_study": case_result.fallback_level
+            "proof": proof_result.fallback_level  # v3: renamed from case_study
         }
     }
 
@@ -560,10 +518,10 @@ async def generate_email(request: GenerateEmailRequest):
             # Validate if enabled
             if validator:
                 try:
-                    # Load client context for validation
+                    # Load client context for validation (v3)
                     supabase_client = SupabaseClient()
-                    client_context = supabase_client.load_client_context(request.client_id)
-                    client_personas_str = ", ".join([p.get("title", "") for p in client_context.personas[:2]]) if client_context.personas else "solutions diverses"
+                    client_context = supabase_client.load_client_context_v3(request.client_id)
+                    client_offerings_str = client_context.get_offerings_str(limit=2)
 
                     # NEW: Scrape prospect website for validation (to detect hallucinations)
                     scraped_content_for_validation = ""
@@ -592,7 +550,7 @@ async def generate_email(request: GenerateEmailRequest):
                         email_content=result["email_content"],
                         contact_company=request.contact.company_name,
                         client_name=client_context.client_name,
-                        client_offering=client_personas_str,
+                        client_offering=client_offerings_str,
                         scraped_content=scraped_content_for_validation  # NOW PASSING REAL CONTENT
                     ))
 
@@ -813,7 +771,8 @@ async def health_check():
         "status": "healthy",
         "openrouter_key_configured": bool(os.getenv("OPENROUTER_API_KEY")),
         "supabase_configured": bool(os.getenv("SUPABASE_URL")),
-        "version": "2.0.0-optimized"
+        "tavily_configured": bool(os.getenv("TAVILY_API_KEY")),
+        "version": "3.0.0"
     }
 
 
@@ -821,10 +780,23 @@ async def health_check():
 async def root():
     """Root endpoint."""
     return {
-        "message": "Optimized n8n Email Generation API",
-        "version": "2.0.0",
-        "cost_savings": "99% vs GPT-4o",
-        "target_cost_per_email": "$0.0005",
+        "message": "n8n Email Generation API v3.0",
+        "version": "3.0.0",
+        "features": [
+            "Context-aware agents with ClientContext",
+            "Tavily web search for real data",
+            "Automatic adaptation to client type",
+            "6 specialized v3 agents",
+            "Email validation loop"
+        ],
+        "agents": [
+            "PersonaExtractorV3",
+            "CompetitorFinderV3",
+            "PainPointAnalyzerV3",
+            "SignalDetectorV3",
+            "SystemMapperV3",
+            "ProofGeneratorV3"
+        ],
         "endpoints": {
             "generate_email": "POST /api/v2/generate-email",
             "pci_filter": "POST /api/v2/pci-filter",

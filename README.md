@@ -1,23 +1,49 @@
 # 🚀 Kaleads Atomic Agents - Email Campaign Generator
 
-Système multi-agents basé sur Atomic Agents pour générer des campagnes d'emails ultra-personnalisés à partir de contexte client (PCI, personas, pain points).
+**v3.0** - Generic, Context-Aware, Web-Enhanced Multi-Agent System
+
+Système multi-agents pour générer des campagnes d'emails ultra-personnalisés. **v3.0 est maintenant générique** et s'adapte automatiquement à tout type de client (lead gen, HR, DevOps, marketing, ops).
+
+## ✨ v3.0 - What's New
+
+🎯 **Generic & Reusable**: Agents s'adaptent automatiquement via `ClientContext` (plus de code Kaleads hardcodé)
+🌐 **Web-Enhanced**: Intégration Tavily pour données réelles (compétiteurs, news, tech stack)
+🧠 **Context-Aware**: Classification automatique du type de client (6 types: lead gen, HR, DevOps, etc.)
+📊 **Multi-Level Fallback**: web_search → scraping → inference → generic (jamais d'hallucinations)
+🔄 **Backward Compatible**: API v2 continue de fonctionner
+
+**Status**: ✅ Phase 1 Complete (100%) - All 6 v3 agents implemented + API updated
+
+📚 **Quick Links**:
+- [V3 Quick Start Guide](./V3_QUICK_START.md) - How to use v3 agents
+- [V3 Completion Summary](./V3_COMPLETION_SUMMARY.md) - What was built
+- [Architecture v3](./ARCHITECTURE_FONDAMENTALE.md) - v3 philosophy
+- [Implementation Plan](./PLAN_ACTION_V3.md) - 8-week roadmap
 
 ## 📋 Vue d'Ensemble
 
-Ce projet implémente un système de 6 agents spécialisés coordonnés par un orchestrateur pour générer automatiquement des emails personnalisés de haute qualité.
+Ce projet implémente un système de 6 agents spécialisés pour générer automatiquement des emails personnalisés de haute qualité. **v3.0 est générique** et fonctionne pour tout client B2B SaaS.
 
-### Architecture
+### Architecture v3.0
 
 ```
-Orchestrator (CampaignOrchestrator)
+ClientContext (Supabase) → Injecté dans tous les agents
     ↓
-├── Agent 1: PersonaExtractorAgent → target_persona, product_category
-├── Agent 2: CompetitorFinderAgent → competitor_name
-├── Agent 3: PainPointAgent → problem_specific, impact_measurable
-├── Agent 4: SignalGeneratorAgent → specific_signal_1/2, specific_target_1/2
-├── Agent 5: SystemBuilderAgent → system_1/2/3
-└── Agent 6: CaseStudyAgent → case_study_result
+├── Agent 1: PersonaExtractorV3 → role, department, likely_pain_points
+├── Agent 2: CompetitorFinderV3 → competitor_name (via Tavily web search)
+├── Agent 3: PainPointAnalyzerV3 → pain_point_description (adaptatif selon client type)
+├── Agent 4: SignalDetectorV3 → signal_type, signal_description, relevance
+├── Agent 5: SystemMapperV3 → tech_stack[], relevant_tech[], integrations
+└── Agent 6: ProofGeneratorV3 → proof_statement (case studies ou achievements)
+    ↓
+API v3.0 (FastAPI) → /api/v2/generate-email
 ```
+
+**Key Features**:
+- All agents accept `ClientContext` and automatically adapt
+- Tavily web search for real data (competitors, news, tech stack)
+- Multi-level fallback strategy (never hallucinates)
+- Backward compatible with v2 API
 
 ## 🚀 Quick Start
 
