@@ -1,0 +1,195 @@
+{
+  "description": "Exemple de requête API avec template, contexte et exemple",
+  "endpoint": "POST /api/v2/generate-email",
+  "scenarios": [
+    {
+      "name": "Option 1: Utiliser un template depuis Supabase",
+      "description": "Le template 'outreach_signal_v1' existe déjà dans Supabase avec son contexte et exemple",
+      "request": {
+        "client_id": "kaleads",
+        "contact": {
+          "company_name": "Jumppe",
+          "first_name": "Cathy",
+          "website": "https://www.jumppe.fr",
+          "industry": "DevOps partagé / part-time"
+        },
+        "template_name": "outreach_signal_v1",
+        "options": {
+          "model_preference": "quality",
+          "enable_scraping": true,
+          "enable_tavily": true,
+          "enable_pci_filter": false
+        }
+      },
+      "expected_result": {
+        "success": true,
+        "email_content": "Bonjour Cathy,\n\nJ'ai remarqué que Jumppe recrute actuellement.\n\nEn tant que Head of Engineering, vous cherchez probablement à scaler sans recruter 10+ DevOps.\n\nOn a aidé Doctolib à passer de 20 à 400 déploiements/semaine en 3 mois.\n\nÇa vous parle?",
+        "tone_match_score": 95,
+        "quality_score": 95,
+        "guidelines_followed": true,
+        "formatting_corrections": []
+      }
+    },
+    {
+      "name": "Option 2: Template inline avec contexte complet",
+      "description": "Tout est fourni dans la requête (template + contexte + exemple)",
+      "request": {
+        "client_id": "kaleads",
+        "contact": {
+          "company_name": "Never2Wait",
+          "first_name": "Serge",
+          "website": "https://www.never2wait.com/fr",
+          "industry": "application de livraison de commandes en ligne"
+        },
+        "template_content": "Bonjour {{first_name}},\n\nJ'ai vu que {{company_name}} {{specific_signal_1}}.\n\nEn tant que {{target_persona}}, tu fais face à {{problem_specific}}.\n\nOn a aidé: {{case_study_result}}.\n\nIntéressé(e)?",
+        "template_context": {
+          "intention": "Générer un meeting pour lead gen B2B",
+          "tone": "Conversationnel et direct",
+          "approach": "Signal factuel + Pain point + Social proof",
+          "style": "Court (< 100 mots), tutoiement si startup",
+          "dos": [
+            "Utiliser un signal factuel trouvé par Tavily",
+            "Montrer de l'empathie pour leur situation",
+            "Donner une métrique précise dans la case study",
+            "Poser une question simple et engageante",
+            "Rester sous 100 mots",
+            "Un seul espace après chaque ponctuation",
+            "Majuscule après chaque point"
+          ],
+          "donts": [
+            "Utiliser du jargon corporate ('solutions innovantes', 'leader du marché')",
+            "Faire un pitch produit",
+            "Utiliser des superlatifs ('le meilleur', 'révolutionnaire')",
+            "Parler de nous avant de parler d'eux",
+            "Avoir des doubles espaces",
+            "Oublier les majuscules après ponctuation"
+          ]
+        },
+        "template_example": {
+          "for_contact": {
+            "company_name": "Aircall",
+            "first_name": "Sophie",
+            "industry": "SaaS",
+            "signal": "recrute 3 commerciaux"
+          },
+          "perfect_email": "Bonjour Sophie,\n\nJ'ai vu qu'Aircall recrute 3 commerciaux en ce moment.\n\nEn tant que Head of Sales, tu dois chercher à accélérer leur montée en compétence.\n\nOn a aidé Salesforce France à réduire leur ramp-up de 6 mois à 2 mois.\n\nÇa te parle?",
+          "why_it_works": "Signal factuel (hiring) + empathie pour leur situation (ramp-up challenge) + métrique concrète et précise (6 mois → 2 mois) + ton conversationnel naturel + CTA simple et engageant"
+        },
+        "options": {
+          "model_preference": "quality",
+          "enable_scraping": true,
+          "enable_tavily": true,
+          "enable_pci_filter": false
+        }
+      },
+      "expected_result": {
+        "success": true,
+        "email_content": "Bonjour Serge,\n\nJ'ai vu que Never2Wait est en expansion.\n\nEn tant que CEO, tu fais face à la génération de leads qualifiés pour scaler.\n\nOn a aidé Deliveroo à augmenter leur pipeline de 300% en 3 mois.\n\nIntéressé?",
+        "tone_match_score": 95,
+        "quality_score": 95,
+        "guidelines_followed": true,
+        "formatting_corrections": [
+          "Capitalized 'Ça' after variable substitution",
+          "Ensured single space after 'expansion.'"
+        ]
+      }
+    },
+    {
+      "name": "Option 3: Template Supabase + Override du contexte",
+      "description": "Template de base + modification ponctuelle du ton",
+      "request": {
+        "client_id": "kaleads",
+        "contact": {
+          "company_name": "Ledger",
+          "first_name": "Alex",
+          "website": "https://ledger.com",
+          "industry": "Crypto / Blockchain"
+        },
+        "template_name": "outreach_signal_v1",
+        "template_context_override": {
+          "tone": "Ultra casual tech-friendly",
+          "dos": [
+            "Tutoyer",
+            "Utiliser du vocabulaire tech (deploys, infra, SRE)",
+            "Être hyper direct (< 50 mots)"
+          ]
+        },
+        "options": {
+          "model_preference": "quality",
+          "enable_tavily": true
+        }
+      },
+      "expected_result": {
+        "success": true,
+        "email_content": "Salut Alex,\n\nVu que Ledger scale, je suppose que tu cherches à augmenter la vélocité sans recruter 10 SREs.\n\nOn a aidé Sorare à passer de 20 à 400 deploys/semaine.\n\nOn en parle?",
+        "tone_match_score": 95,
+        "quality_score": 92,
+        "guidelines_followed": true
+      }
+    },
+    {
+      "name": "ANCIEN SYSTÈME (pour comparaison)",
+      "description": "Requête sans contexte ni exemple - qualité médiocre",
+      "request": {
+        "client_id": "kaleads",
+        "contact": {
+          "company_name": "Jumppe",
+          "first_name": "Cathy",
+          "website": "https://www.jumppe.fr",
+          "industry": "DevOps"
+        },
+        "template_content": "Bonjour {{first_name}},\n\nJ'ai remarqué que {{company_name}} {{specific_signal_1}}, donc ça m'a donné envie de vous contacter.\n\nEn tant que {{target_persona}}, vous faites surement face à {{problem_specific}}, non? .\n\nJe demande car on a aidé: {{case_study_result}} à obtenir {{result}} sans avoir {{second_problem}}.\nCe serait pertinent à explorer ou pas du tout ?\n\nCordialement",
+        "options": {
+          "model_preference": "quality",
+          "enable_scraping": true,
+          "enable_tavily": true
+        }
+      },
+      "problems_detected": {
+        "formatting_errors": [
+          "Missing space after 'non? .'",
+          "Incorrect capitalization: 'ça' should be 'Ça'",
+          "Double space in places",
+          "No space before '?'"
+        ],
+        "validation_attempts": 3,
+        "quality_score": 70,
+        "tone_inconsistent": true,
+        "no_automatic_corrections": true
+      }
+    }
+  ],
+  "curl_examples": [
+    {
+      "name": "Option 1: Template depuis Supabase",
+      "command": "curl -X POST http://localhost:8001/api/v2/generate-email \\\n  -H \"Content-Type: application/json\" \\\n  -H \"X-API-Key: your-api-key\" \\\n  -d '{\n    \"client_id\": \"kaleads\",\n    \"contact\": {\n      \"company_name\": \"Jumppe\",\n      \"first_name\": \"Cathy\",\n      \"website\": \"https://www.jumppe.fr\",\n      \"industry\": \"DevOps\"\n    },\n    \"template_name\": \"outreach_signal_v1\",\n    \"options\": {\n      \"model_preference\": \"quality\",\n      \"enable_tavily\": true\n    }\n  }'"
+    },
+    {
+      "name": "Option 2: Template inline complet",
+      "command": "curl -X POST http://localhost:8001/api/v2/generate-email \\\n  -H \"Content-Type: application/json\" \\\n  -H \"X-API-Key: your-api-key\" \\\n  -d @request_with_context.json"
+    }
+  ],
+  "n8n_node_config": {
+    "description": "Configuration pour un nœud HTTP Request dans n8n",
+    "method": "POST",
+    "url": "http://kaleads-atomic-agents:20001/api/v2/generate-email",
+    "authentication": "Header Auth",
+    "header_name": "X-API-Key",
+    "body_type": "JSON",
+    "body_example": {
+      "client_id": "{{ $json.client_id }}",
+      "contact": {
+        "company_name": "{{ $json.company_name }}",
+        "first_name": "{{ $json.first_name }}",
+        "website": "{{ $json.website }}",
+        "industry": "{{ $json.industry }}"
+      },
+      "template_name": "outreach_signal_v1",
+      "options": {
+        "model_preference": "quality",
+        "enable_scraping": true,
+        "enable_tavily": true
+      }
+    }
+  }
+}

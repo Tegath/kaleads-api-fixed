@@ -471,6 +471,72 @@ class ClientContext(BaseModel):
         """
         return self.email_templates.get(template_name)
 
+    def get_email_guidelines_prompt(self, template_name: Optional[str] = None) -> str:
+        """
+        Get email generation guidelines as a formatted prompt.
+
+        Args:
+            template_name: Specific template to get guidelines for (optional)
+
+        Returns:
+            Formatted string with guidelines and examples for email generation
+
+        Example:
+            >>> print(context.get_email_guidelines_prompt("outreach_v1"))
+            📧 EMAIL GENERATION GUIDELINES:
+            - Intention: Generate a meeting
+            - Tone: Professional but friendly
+            ...
+        """
+        if not self.email_templates:
+            return ""
+
+        # If template_name specified, get that specific template
+        if template_name:
+            template = self.get_template(template_name)
+            if not template:
+                return ""
+
+            lines = []
+
+            # Add template context if it exists
+            if "context" in template and template["context"]:
+                ctx = template["context"]
+                if isinstance(ctx, dict):
+                    # Convert dict to TemplateContext
+                    ctx = TemplateContext(**ctx)
+
+                lines.append(ctx.to_prompt_string())
+
+            # Add example if it exists
+            if "example" in template and template["example"]:
+                ex = template["example"]
+                if isinstance(ex, dict):
+                    # Convert dict to TemplateExample
+                    ex = TemplateExample(**ex)
+
+                lines.append("")
+                lines.append(ex.to_prompt_string())
+
+            return "\n".join(lines)
+
+        # Otherwise, show guidelines from all templates
+        lines = ["📧 EMAIL GENERATION GUIDELINES:\n"]
+
+        for tpl_name, tpl_data in self.email_templates.items():
+            lines.append(f"Template: {tpl_name}")
+
+            if "context" in tpl_data and tpl_data["context"]:
+                ctx = tpl_data["context"]
+                if isinstance(ctx, dict):
+                    ctx = TemplateContext(**ctx)
+                lines.append(f"  - Tone: {ctx.tone}")
+                lines.append(f"  - Style: {ctx.style}")
+
+            lines.append("")
+
+        return "\n".join(lines)
+
     def to_context_prompt(self, include_case_studies: bool = True, include_competitors: bool = True) -> str:
         """
         Convert ClientContext to a formatted prompt string for agents.
