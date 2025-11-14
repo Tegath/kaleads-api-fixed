@@ -381,9 +381,9 @@ async def generate_email_with_agents(
         "product_category": f"{persona_result.department} - {persona_result.seniority_level}",  # v3: constructed from role/department
         "competitor_name": competitor_result.competitor_name,  # Same
         "competitor_product_category": competitor_result.competitor_product_category,  # Same
-        "problem_specific": pain_result.pain_point_description,  # v3: pain_point_description
-        "impact_measurable": pain_result.pain_point_description,  # v3: reuse same field
-        "case_study_result": proof_result.proof_statement,  # v3: proof_statement instead of case_study_result
+        "problem_specific": pain_result.problem_specific,  # v3: problem_specific (correct field name)
+        "impact_measurable": pain_result.impact_measurable,  # v3: impact_measurable (correct field name)
+        "case_study_result": proof_result.case_study_result,  # v3: case_study_result (same as v2)
         "specific_signal_1": signal_result.signal_description if signal_result.signal_type != "none" else "est en phase de croissance",  # v3: signal_description
         "specific_signal_2": signal_result.relevance_to_client if signal_result.signal_type != "none" else "",  # v3: relevance
         "specific_target_1": ", ".join(persona_result.likely_pain_points[:1]) if persona_result.likely_pain_points else "",  # v3: from persona
