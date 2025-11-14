@@ -107,6 +107,7 @@ class ProofGeneratorV3:
         api_key: Optional[str] = None,
         model: Optional[str] = None,
         enable_scraping: bool = True,
+        enable_tavily: bool = True,
         client_context: Optional["ClientContext"] = None,
         mode: Literal["client_case_studies", "prospect_achievements"] = "client_case_studies"
     ):
@@ -117,12 +118,14 @@ class ProofGeneratorV3:
             api_key: OpenRouter API key (optional)
             model: Model to use (optional)
             enable_scraping: Enable website scraping
+            enable_tavily: Enable Tavily web search (for prospect_achievements mode)
             client_context: Client context (REQUIRED for client_case_studies mode)
             mode: "client_case_studies" (default) or "prospect_achievements"
         """
         self.api_key = api_key
         self.model = model
         self.enable_scraping = enable_scraping
+        self.enable_tavily = enable_tavily
         self.client_context = client_context
         self.mode = mode
 

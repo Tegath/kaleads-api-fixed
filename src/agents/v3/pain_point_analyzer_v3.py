@@ -236,6 +236,7 @@ class PainPointAnalyzerV3:
         api_key: Optional[str] = None,
         model: Optional[str] = None,
         enable_scraping: bool = True,
+        enable_tavily: bool = True,
         client_context: Optional["ClientContext"] = None
     ):
         """
@@ -245,11 +246,13 @@ class PainPointAnalyzerV3:
             api_key: OpenRouter API key (optional)
             model: Model to use (optional)
             enable_scraping: Enable website scraping
+            enable_tavily: Enable Tavily web search (currently unused by this agent, but kept for API consistency)
             client_context: Client context (RECOMMENDED - determines pain type)
         """
         self.api_key = api_key
         self.model = model
         self.enable_scraping = enable_scraping
+        self.enable_tavily = enable_tavily  # Not used by PainPointAnalyzer, but kept for consistency
         self.client_context = client_context
 
         # Determine pain type from client context
