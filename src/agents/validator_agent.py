@@ -28,6 +28,10 @@ class EmailValidationInputSchema(BaseIOSchema):
     client_offering: str = Field(..., description="Ce que le client vend")
     scraped_content: str = Field(default="", description="Contenu scrapé du site du prospect")
 
+    # NEW: Optional instructions and example
+    email_instructions: str = Field(default="", description="Instructions sur le ton/style à suivre (optionnel)")
+    example_email: str = Field(default="", description="Exemple parfait à imiter (optionnel)")
+
 
 class EmailValidationOutputSchema(BaseIOSchema):
     """Output schema for email validation"""
@@ -35,6 +39,7 @@ class EmailValidationOutputSchema(BaseIOSchema):
     quality_score: int = Field(..., ge=0, le=100, description="Score de qualité 0-100")
     issues: List[str] = Field(default_factory=list, description="Liste des problèmes détectés")
     suggestions: List[str] = Field(default_factory=list, description="Suggestions d'amélioration")
+    corrected_email: str = Field(..., description="Email avec toutes les corrections appliquées (espaces, majuscules, ponctuation)")
 
 
 class EmailValidatorAgent:
@@ -141,10 +146,27 @@ class EmailValidatorAgent:
         ]
 
         output_instructions = [
-            "Return JSON with is_valid, quality_score, issues, suggestions.",
+            "Return JSON with is_valid, quality_score, issues, suggestions, AND corrected_email.",
             "Be strict: deduct points for each issue found.",
             "issues should be specific: 'Incorrect capital after company name: Vient → vient'",
             "suggestions should be actionable: 'Change Vient to vient on line 3'",
+            "",
+            "CRITICAL - AUTO-CORRECTION:",
+            "In corrected_email field, return the email with ALL formatting fixes applied:",
+            "- Fix all spacing errors (add missing spaces after punctuation, remove double spaces)",
+            "- Fix all capitalization errors (lowercase after variables mid-sentence)",
+            "- Fix all punctuation errors (remove double punctuation)",
+            "- Keep the content and meaning identical, ONLY fix formatting",
+            "",
+            "IF email_instructions or example_email are provided in the input:",
+            "- Use email_instructions to guide the tone/style of corrections",
+            "- Use example_email as reference for the desired tone/style",
+            "- Make sure corrected_email follows the instructions and matches the example's tone",
+            "",
+            "Example:",
+            "Input: 'J'ai vu que {{company}} Recrute en ce moment, non? . Ça'",
+            "corrected_email: 'J'ai vu que {{company}} recrute en ce moment, non?  Ça'",
+            "                  (fixed: capital R → r, removed space before period, fixed 'ça' → 'Ça')",
         ]
 
         system_prompt_generator = SystemPromptGenerator(

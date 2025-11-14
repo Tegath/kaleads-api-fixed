@@ -105,6 +105,17 @@ class GenerateEmailRequest(BaseModel):
         description="Email template with {{variables}}. Use \\n for line breaks. Example: 'Bonjour {{first_name}},\\n\\nJ\\'ai vu que {{company_name}}...'"
     )
     template_id: Optional[str] = Field(None, description="Template ID from Supabase (alternative to template_content)")
+
+    # NEW: Inline instructions and example
+    email_instructions: Optional[str] = Field(
+        None,
+        description="Instructions sur le ton/style de l'email (ex: 'Ton conversational, court (<100 mots), corriger tous les espaces/majuscules')"
+    )
+    example_email: Optional[str] = Field(
+        None,
+        description="Un exemple parfait d'email à imiter pour apprendre le ton/style"
+    )
+
     options: Dict[str, Any] = Field(
         default_factory=lambda: {
             "model_preference": "balanced",  # cheap|balanced|quality (balanced par défaut pour meilleure qualité)
@@ -250,7 +261,9 @@ async def generate_email_with_agents(
     client_id: str,
     template_content: Optional[str] = None,
     enable_scraping: bool = True,
-    model_preference: str = "cheap"
+    model_preference: str = "cheap",
+    email_instructions: Optional[str] = None,
+    example_email: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Generate email using optimized agents.
@@ -551,8 +564,13 @@ async def generate_email(request: GenerateEmailRequest):
                         contact_company=request.contact.company_name,
                         client_name=client_context.client_name,
                         client_offering=client_offerings_str,
-                        scraped_content=scraped_content_for_validation  # NOW PASSING REAL CONTENT
+                        scraped_content=scraped_content_for_validation,  # NOW PASSING REAL CONTENT
+                        email_instructions=request.email_instructions or "",  # NEW: Pass instructions
+                        example_email=request.example_email or ""  # NEW: Pass example
                     ))
+
+                    # USE CORRECTED EMAIL (auto-fix from validator)
+                    result["email_content"] = validation.corrected_email
 
                     quality_score = validation.quality_score
                     validation_attempts.append({
