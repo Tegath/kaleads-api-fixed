@@ -45,15 +45,24 @@ class ClientContext(BaseModel):
 class SupabaseClient:
     def __init__(self, supabase_url: Optional[str] = None, supabase_key: Optional[str] = None):
         self.supabase_url = supabase_url or os.getenv("SUPABASE_URL")
-        self.supabase_key = supabase_key or os.getenv("SUPABASE_KEY")
-        
+        self.supabase_key = supabase_key or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+        print(f"DEBUG: SupabaseClient init - URL present: {bool(self.supabase_url)}, Key present: {bool(self.supabase_key)}")
+
         try:
             from supabase import create_client, Client
             if not self.supabase_url or not self.supabase_key:
+                print(f"DEBUG: Missing credentials - setting enabled=False")
                 raise ValueError("Supabase credentials required.")
             self.client: Client = create_client(self.supabase_url, self.supabase_key)
             self.enabled = True
-        except ImportError:
+            print(f"DEBUG: Supabase client created successfully - enabled=True")
+        except ImportError as e:
+            print(f"DEBUG: Import error: {e}")
+            self.client = None
+            self.enabled = False
+        except Exception as e:
+            print(f"DEBUG: Error creating Supabase client: {e}")
             self.client = None
             self.enabled = False
 
@@ -151,34 +160,43 @@ class SupabaseClient:
 
         try:
             # Step 1: Load main client data from client_contexts table
+            print(f"DEBUG: Querying Supabase for client_id: {client_id}")
             response = self.client.table("client_contexts").select("*").eq("client_id", client_id).execute()
+            print(f"DEBUG: Response data count: {len(response.data) if response.data else 0}")
 
             if not response.data or len(response.data) == 0:
+                print(f"DEBUG: Client {client_id} not found in client_contexts table")
                 raise ValueError(f"Client {client_id} not found in client_contexts")
 
             data = response.data[0]
+            print(f"DEBUG: Found client: {data.get('client_name', 'Unknown')}")
 
             # Step 2: Extract basic info
             client_name = data.get("client_name", "Unknown Client")
 
-            # Step 3: Extract personas
+            # Step 3: Extract from company_profile (PRIMARY SOURCE)
+            company_profile = data.get("company_profile", {})
+
+            # Offerings from company_profile (not from personas!)
+            offerings = company_profile.get("offerings", [])
+
+            # Pain solved from company_profile
+            pain_solved = company_profile.get("pain_solved", "")
+
+            # Target industries from company_profile
+            target_industries = company_profile.get("target_industries", [])
+
+            # Step 4: Extract personas
             personas = data.get("personas", [])
 
-            # Step 4: Extract offerings from personas
-            offerings = []
-            for persona in personas:
-                title = persona.get("title", "")
-                if title and title not in offerings:
-                    offerings.append(title)
+            # Step 5: Extract value proposition (if exists)
+            value_proposition = company_profile.get("value_proposition", "")
 
-            # Step 5: Extract pain_solved
-            pain_solved = self._extract_pain_solved(data, personas)
+            # Fallback for pain_solved if not in company_profile
+            if not pain_solved:
+                pain_solved = self._extract_pain_solved(data, personas)
 
-            # Step 6: Extract value proposition
-            value_proposition = data.get("value_proposition", "")
-
-            # Step 7: Extract ICP (Ideal Customer Profile)
-            target_industries = []
+            # Step 6: Extract ICP from segments (company sizes, regions)
             target_company_sizes = []
             target_regions = []
 
@@ -187,8 +205,9 @@ class SupabaseClient:
                 first_seg = segments[0]
                 firmographics = first_seg.get("firmographics", {})
 
-                # Industries
-                target_industries = firmographics.get("industries", [])
+                # Industries (only if not already set from company_profile)
+                if not target_industries:
+                    target_industries = firmographics.get("industries", [])
 
                 # Company sizes
                 employee_count = firmographics.get("employee_count", {})
@@ -321,7 +340,9 @@ class SupabaseClient:
             )
 
         except Exception as e:
-            print(f"Error loading client context v3: {e}")
+            import traceback
+            print(f"ERROR loading client context v3 for {client_id}: {e}")
+            print(f"Full traceback:\n{traceback.format_exc()}")
             return self._get_mock_context_v3(client_id)
 
     def _extract_pain_solved(self, data: Dict[str, Any], personas: List[Dict[str, Any]]) -> str:

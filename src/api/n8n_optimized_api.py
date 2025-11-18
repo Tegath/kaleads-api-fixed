@@ -14,6 +14,13 @@ Generation time: <30 seconds
 
 import os
 import asyncio
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not installed, variables should be set in environment
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Header, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,6 +50,14 @@ from src.agents.validator_agent import (
 from src.agents.pci_agent import PCIFilterAgent, batch_filter_contacts
 from src.providers.supabase_client import SupabaseClient
 from src.models.client_context import ClientContext
+from src.agents.lead_gen_coordinator_agent import (
+    LeadGenCoordinatorAgent,
+    CoordinatorInputSchema,
+    CoordinatorOutputSchema
+)
+from src.integrations.google_maps_integration import GoogleMapsLeadGenerator
+from src.integrations.jobspy_integration import JobSpyLeadGenerator
+from src.utils.cities_helper import CitiesHelper
 
 app = FastAPI(
     title="n8n Email Generation API v3.0",
@@ -204,6 +219,83 @@ class BatchStatusResponse(BaseModel):
     error_count: int
     cost_usd: float
     results: Optional[List[Dict[str, Any]]] = None
+
+
+# ============================================
+# Lead Gen Coordinator Schemas
+# ============================================
+
+class CoordinatorAnalyzeRequest(BaseModel):
+    """Request for coordinator to analyze client context and generate strategy."""
+    client_id: str = Field(..., description="Client UUID from Supabase")
+    target_count: int = Field(
+        500,
+        description="Target number of leads (used for city selection optimization)"
+    )
+    regions: Optional[List[str]] = Field(
+        None,
+        description="Optional list of regions to focus on (e.g., ['Île-de-France', 'Auvergne-Rhône-Alpes'])"
+    )
+    country: str = Field(
+        "France",
+        description="Country to focus on (France or Belgique)"
+    )
+
+
+class CoordinatorAnalyzeResponse(BaseModel):
+    """Response from coordinator with full strategy."""
+    success: bool
+    client_name: str
+    pain_type: str
+    strategy: str
+    google_maps_searches: List[Dict[str, Any]]
+    jobspy_searches: List[Dict[str, Any]]
+    cities: List[str]
+    estimated_leads: Dict[str, int]
+    execution_plan: Dict[str, Any]
+
+
+class GoogleMapsSearchRequest(BaseModel):
+    """Request for executing Google Maps searches."""
+    query: str = Field(..., description="Search query (e.g., 'agence marketing')")
+    cities: List[str] = Field(..., description="List of cities to search in")
+    max_results_per_city: int = Field(
+        50,
+        description="Maximum results per city"
+    )
+
+
+class GoogleMapsSearchResponse(BaseModel):
+    """Response from Google Maps search."""
+    success: bool
+    leads: List[Dict[str, Any]]
+    total_leads: int
+    cities_searched: List[str]
+    cost_usd: float
+
+
+class JobSpySearchRequest(BaseModel):
+    """Request for executing JobSpy searches."""
+    job_title: str = Field(..., description="Job title to search (e.g., 'Head of Sales')")
+    location: str = Field(..., description="Location to search (e.g., 'France')")
+    company_size: Optional[List[str]] = Field(
+        None,
+        description="Company sizes to filter (e.g., ['11-50', '51-200'])"
+    )
+    industries: Optional[List[str]] = Field(
+        None,
+        description="Industries to filter (e.g., ['SaaS', 'Tech'])"
+    )
+    max_results: int = Field(100, description="Maximum results")
+
+
+class JobSpySearchResponse(BaseModel):
+    """Response from JobSpy search."""
+    success: bool
+    leads: List[Dict[str, Any]]
+    total_leads: int
+    job_title_searched: str
+    cost_usd: float
 
 
 # ============================================
@@ -794,18 +886,180 @@ async def health_check():
     }
 
 
+@app.post("/api/v2/coordinator/analyze", response_model=CoordinatorAnalyzeResponse)
+async def coordinator_analyze(request: CoordinatorAnalyzeRequest):
+    """
+    Analyze client context and generate optimized lead generation strategy.
+
+    This endpoint:
+    1. Loads ClientContext from Supabase
+    2. Analyzes pain_solved, ICP, industries
+    3. Generates optimized Google Maps keywords
+    4. Generates JobSpy search parameters (job titles = hiring signals)
+    5. Returns complete strategy for n8n execution
+
+    Example response:
+    {
+        "pain_type": "lead_generation",
+        "strategy": "hybrid",
+        "google_maps_searches": [
+            {"query": "agence marketing", "cities": ["Paris", "Lyon", ...]}
+        ],
+        "jobspy_searches": [
+            {"job_title": "Head of Sales", "location": "France"}
+        ],
+        "estimated_leads": {"google_maps": 500, "jobspy": 200}
+    }
+    """
+    try:
+        # Load client context from Supabase
+        supabase_client = SupabaseClient()
+        client_context = supabase_client.load_client_context_v3(request.client_id)
+
+        # Initialize coordinator agent
+        coordinator = LeadGenCoordinatorAgent(client_context=client_context)
+
+        # Run coordinator analysis
+        result = coordinator.run(CoordinatorInputSchema(
+            client_id=request.client_id,
+            target_count=request.target_count,
+            regions=request.regions,
+            country=request.country
+        ))
+
+        return CoordinatorAnalyzeResponse(
+            success=True,
+            client_name=client_context.client_name,
+            pain_type=result.pain_type,
+            strategy=result.strategy,
+            google_maps_searches=result.google_maps_searches,
+            jobspy_searches=result.jobspy_searches,
+            cities=result.cities,
+            estimated_leads=result.estimated_leads,
+            execution_plan=result.execution_plan
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v2/leads/google-maps", response_model=GoogleMapsSearchResponse)
+async def execute_google_maps_search(request: GoogleMapsSearchRequest):
+    """
+    Execute Google Maps lead generation search.
+
+    Searches for businesses matching the query across multiple cities.
+
+    Example request:
+    {
+        "query": "agence marketing",
+        "cities": ["Paris", "Lyon", "Marseille"],
+        "max_results_per_city": 50
+    }
+
+    Returns:
+    - List of leads with company_name, address, phone, website, etc.
+    - Total lead count
+    - Cost estimate
+    """
+    try:
+        start_time = datetime.now()
+
+        # Initialize Google Maps integration
+        gmaps = GoogleMapsLeadGenerator()
+
+        # Execute multi-city search
+        leads = gmaps.search_multiple_cities(
+            query=request.query,
+            cities=request.cities,
+            max_results_per_city=request.max_results_per_city
+        )
+
+        processing_time = (datetime.now() - start_time).total_seconds()
+
+        # Estimate cost (RapidAPI Google Maps Scraper: ~$0.001 per request)
+        # Assuming 1 request per city
+        cost = len(request.cities) * 0.001
+
+        return GoogleMapsSearchResponse(
+            success=True,
+            leads=leads,
+            total_leads=len(leads),
+            cities_searched=request.cities,
+            cost_usd=cost
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v2/leads/jobspy", response_model=JobSpySearchResponse)
+async def execute_jobspy_search(request: JobSpySearchRequest):
+    """
+    Execute JobSpy lead generation search.
+
+    Searches for companies with job postings (hiring signals).
+
+    Example request:
+    {
+        "job_title": "Head of Sales",
+        "location": "France",
+        "company_size": ["11-50", "51-200"],
+        "industries": ["SaaS", "Tech"],
+        "max_results": 100
+    }
+
+    Returns:
+    - List of leads with company_name, hiring_signal, job_url, etc.
+    - Total lead count
+    - Cost estimate
+    """
+    try:
+        start_time = datetime.now()
+
+        # Initialize JobSpy integration
+        jobspy = JobSpyLeadGenerator()
+
+        # Execute job search
+        leads = jobspy.search_jobs(
+            job_title=request.job_title,
+            location=request.location,
+            company_size=request.company_size,
+            industries=request.industries,
+            max_results=request.max_results
+        )
+
+        processing_time = (datetime.now() - start_time).total_seconds()
+
+        # Estimate cost (JobSpy API: minimal cost, mostly compute)
+        cost = 0.0005
+
+        return JobSpySearchResponse(
+            success=True,
+            leads=leads,
+            total_leads=len(leads),
+            job_title_searched=request.job_title,
+            cost_usd=cost
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/")
 async def root():
     """Root endpoint."""
     return {
-        "message": "n8n Email Generation API v3.0",
+        "message": "n8n Email Generation API v3.0 + Lead Gen Coordinator",
         "version": "3.0.0",
         "features": [
             "Context-aware agents with ClientContext",
             "Tavily web search for real data",
             "Automatic adaptation to client type",
             "6 specialized v3 agents",
-            "Email validation loop"
+            "Email validation loop",
+            "Lead Generation Coordinator (NEW)",
+            "Google Maps + JobSpy integrations (NEW)"
         ],
         "agents": [
             "PersonaExtractorV3",
@@ -813,13 +1067,17 @@ async def root():
             "PainPointAnalyzerV3",
             "SignalDetectorV3",
             "SystemMapperV3",
-            "ProofGeneratorV3"
+            "ProofGeneratorV3",
+            "LeadGenCoordinatorAgent (NEW)"
         ],
         "endpoints": {
             "generate_email": "POST /api/v2/generate-email",
             "pci_filter": "POST /api/v2/pci-filter",
             "batch": "POST /api/v2/batch",
-            "batch_status": "GET /api/v2/batch/{batch_id}"
+            "batch_status": "GET /api/v2/batch/{batch_id}",
+            "coordinator_analyze": "POST /api/v2/coordinator/analyze (NEW)",
+            "google_maps_search": "POST /api/v2/leads/google-maps (NEW)",
+            "jobspy_search": "POST /api/v2/leads/jobspy (NEW)"
         }
     }
 

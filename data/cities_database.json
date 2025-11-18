@@ -1,0 +1,265 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2025-01-15",
+  "total_cities": 70,
+  "countries": {
+    "France": {
+      "total_cities": 50,
+      "top_50": [
+        "Paris",
+        "Marseille",
+        "Lyon",
+        "Toulouse",
+        "Nice",
+        "Nantes",
+        "Montpellier",
+        "Strasbourg",
+        "Bordeaux",
+        "Lille",
+        "Rennes",
+        "Reims",
+        "Saint-Étienne",
+        "Toulon",
+        "Le Havre",
+        "Grenoble",
+        "Dijon",
+        "Angers",
+        "Nîmes",
+        "Villeurbanne",
+        "Saint-Denis",
+        "Le Mans",
+        "Aix-en-Provence",
+        "Clermont-Ferrand",
+        "Brest",
+        "Tours",
+        "Amiens",
+        "Limoges",
+        "Annecy",
+        "Perpignan",
+        "Boulogne-Billancourt",
+        "Metz",
+        "Besançon",
+        "Orléans",
+        "Rouen",
+        "Mulhouse",
+        "Caen",
+        "Nancy",
+        "Argenteuil",
+        "Saint-Paul",
+        "Roubaix",
+        "Montreuil",
+        "Tourcoing",
+        "Nanterre",
+        "Avignon",
+        "Créteil",
+        "Poitiers",
+        "Versailles",
+        "Pau",
+        "La Rochelle"
+      ],
+      "regions": {
+        "Île-de-France": [
+          "Paris",
+          "Boulogne-Billancourt",
+          "Versailles",
+          "Argenteuil",
+          "Montreuil",
+          "Nanterre",
+          "Créteil",
+          "Saint-Denis"
+        ],
+        "Auvergne-Rhône-Alpes": [
+          "Lyon",
+          "Grenoble",
+          "Villeurbanne",
+          "Saint-Étienne",
+          "Clermont-Ferrand",
+          "Annecy"
+        ],
+        "Provence-Alpes-Côte d'Azur": [
+          "Marseille",
+          "Nice",
+          "Toulon",
+          "Aix-en-Provence",
+          "Avignon"
+        ],
+        "Nouvelle-Aquitaine": [
+          "Bordeaux",
+          "Limoges",
+          "Pau",
+          "La Rochelle"
+        ],
+        "Occitanie": [
+          "Toulouse",
+          "Montpellier",
+          "Nîmes",
+          "Perpignan"
+        ],
+        "Hauts-de-France": [
+          "Lille",
+          "Amiens",
+          "Roubaix",
+          "Tourcoing"
+        ],
+        "Pays de la Loire": [
+          "Nantes",
+          "Angers",
+          "Le Mans"
+        ],
+        "Bretagne": [
+          "Rennes",
+          "Brest"
+        ],
+        "Grand Est": [
+          "Strasbourg",
+          "Reims",
+          "Metz",
+          "Mulhouse",
+          "Nancy"
+        ],
+        "Normandie": [
+          "Le Havre",
+          "Rouen",
+          "Caen"
+        ],
+        "Bourgogne-Franche-Comté": [
+          "Dijon",
+          "Besançon"
+        ],
+        "Centre-Val de Loire": [
+          "Tours",
+          "Orléans"
+        ]
+      }
+    },
+    "Belgique": {
+      "total_cities": 20,
+      "top_20": [
+        "Bruxelles",
+        "Anvers",
+        "Gand",
+        "Charleroi",
+        "Liège",
+        "Bruges",
+        "Namur",
+        "Louvain",
+        "Mons",
+        "Malines",
+        "Alost",
+        "Hasselt",
+        "Courtrai",
+        "Ostende",
+        "Genk",
+        "Seraing",
+        "Roulers",
+        "Tournai",
+        "Mouscron",
+        "Verviers"
+      ],
+      "regions": {
+        "Bruxelles-Capitale": [
+          "Bruxelles"
+        ],
+        "Flandre": [
+          "Anvers",
+          "Gand",
+          "Bruges",
+          "Louvain",
+          "Malines",
+          "Alost",
+          "Hasselt",
+          "Courtrai",
+          "Ostende",
+          "Genk",
+          "Roulers"
+        ],
+        "Wallonie": [
+          "Charleroi",
+          "Liège",
+          "Namur",
+          "Mons",
+          "Seraing",
+          "Tournai",
+          "Mouscron",
+          "Verviers"
+        ]
+      }
+    }
+  },
+  "selection_strategies": {
+    "top_10": {
+      "description": "Top 10 cities by population (best for quick tests)",
+      "france": [
+        "Paris",
+        "Marseille",
+        "Lyon",
+        "Toulouse",
+        "Nice",
+        "Nantes",
+        "Montpellier",
+        "Strasbourg",
+        "Bordeaux",
+        "Lille"
+      ],
+      "belgique": [
+        "Bruxelles",
+        "Anvers",
+        "Gand",
+        "Charleroi",
+        "Liège",
+        "Bruges",
+        "Namur",
+        "Louvain",
+        "Mons",
+        "Malines"
+      ]
+    },
+    "top_25": {
+      "description": "Top 25 cities (good balance coverage/time)",
+      "france": [
+        "Paris",
+        "Marseille",
+        "Lyon",
+        "Toulouse",
+        "Nice",
+        "Nantes",
+        "Montpellier",
+        "Strasbourg",
+        "Bordeaux",
+        "Lille",
+        "Rennes",
+        "Reims",
+        "Saint-Étienne",
+        "Toulon",
+        "Le Havre",
+        "Grenoble",
+        "Dijon",
+        "Angers",
+        "Nîmes",
+        "Villeurbanne",
+        "Saint-Denis",
+        "Le Mans",
+        "Aix-en-Provence",
+        "Clermont-Ferrand",
+        "Brest"
+      ]
+    },
+    "major_tech_hubs": {
+      "description": "Cities with strong tech/startup presence",
+      "cities": [
+        "Paris",
+        "Lyon",
+        "Toulouse",
+        "Nantes",
+        "Bordeaux",
+        "Lille",
+        "Montpellier",
+        "Grenoble",
+        "Rennes",
+        "Bruxelles",
+        "Anvers",
+        "Gand"
+      ]
+    }
+  }
+}
