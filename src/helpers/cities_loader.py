@@ -21,7 +21,7 @@ class CitiesLoader:
     def _load_cities(self):
         """Load all cities from CSV files"""
         # Load French cities
-        france_file = self.base_path / "Ville de Frances - Feuille 1.csv"
+        france_file = self.base_path / "Villes_france.csv"
         if france_file.exists():
             self.france_cities = self._load_france_csv(france_file)
 

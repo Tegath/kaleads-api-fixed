@@ -25,7 +25,7 @@ COPY data/ ./data/
 COPY .env.example .env
 
 # Copy city CSV files for comprehensive scraping
-COPY "Ville de Frances - Feuille 1.csv" ./
+COPY Villes_france.csv ./
 COPY Villes_belgique.csv ./
 
 # Expose port
