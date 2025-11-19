@@ -1102,6 +1102,141 @@ async def execute_jobspy_search(request: JobSpySearchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================
+# Background Scraping Jobs Endpoints
+# ============================================
+
+@app.post("/api/v2/scraping/start")
+async def start_scraping_job(
+    query: str,
+    country: str = "France",
+    min_population: int = 5000,
+    max_priority: int = 3,
+    client_id: str = "kaleads",
+    background_tasks: BackgroundTasks = None
+):
+    """
+    Start a background scraping job with intelligent city strategy.
+
+    Args:
+        query: Search query (e.g., "agence marketing")
+        country: Country (France or Wallonie)
+        min_population: Minimum city population
+        max_priority: 1=only >100k pop, 2=only >20k, 3=all >5k
+        client_id: Client ID
+
+    Returns:
+        Job ID and estimates
+    """
+    try:
+        from src.services.scraping_job_manager import ScrapingJobManager
+
+        manager = ScrapingJobManager(client_id=client_id)
+        job_id = manager.create_job(
+            query=query,
+            country=country,
+            min_population=min_population,
+            max_priority=max_priority
+        )
+
+        job = manager._get_job(job_id)
+
+        # Start job in background
+        if background_tasks:
+            background_tasks.add_task(manager.run_job, job_id)
+        else:
+            import asyncio
+            asyncio.create_task(manager.run_job(job_id))
+
+        return {
+            "job_id": job_id,
+            "status": "pending",
+            "query": query,
+            "estimated_cities": job.get('total_cities'),
+            "estimated_cost_usd": job.get('estimated_cost_usd'),
+            "message": "Job started. Monitor at /api/v2/scraping/status/{job_id}"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v2/scraping/status/{job_id}")
+async def get_scraping_job_status(job_id: str):
+    """Get job status with progress."""
+    try:
+        from src.services.scraping_job_manager import ScrapingJobManager
+
+        manager = ScrapingJobManager()
+        status = manager.get_job_status(job_id)
+
+        if not status:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        return status
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v2/scraping/jobs")
+async def list_scraping_jobs(status: Optional[str] = None, limit: int = 50):
+    """List all scraping jobs."""
+    try:
+        from src.services.scraping_job_manager import ScrapingJobManager
+
+        manager = ScrapingJobManager()
+        jobs = manager.list_jobs(status=status, limit=limit)
+
+        jobs_with_progress = []
+        for job in jobs:
+            total = job.get('total_cities', 1)
+            completed = job.get('cities_completed', 0)
+            progress_pct = round((completed / total) * 100, 2) if total > 0 else 0
+
+            jobs_with_progress.append({
+                "job_id": job['id'],
+                "query": job['query'],
+                "status": job['status'],
+                "progress_pct": progress_pct,
+                "cities_completed": completed,
+                "total_cities": total,
+                "total_leads_found": job.get('total_leads_found', 0),
+                "created_at": job.get('created_at')
+            })
+
+        return {"jobs": jobs_with_progress}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v2/scraping/resume/{job_id}")
+async def resume_scraping_job(job_id: str, background_tasks: BackgroundTasks = None):
+    """Resume a paused/failed job."""
+    try:
+        from src.services.scraping_job_manager import ScrapingJobManager
+
+        manager = ScrapingJobManager()
+
+        if background_tasks:
+            background_tasks.add_task(manager.run_job, job_id)
+        else:
+            import asyncio
+            asyncio.create_task(manager.run_job(job_id))
+
+        return {
+            "job_id": job_id,
+            "status": "pending",
+            "message": "Job resumed"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/")
 async def root():
     """Root endpoint."""

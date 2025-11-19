@@ -27,6 +27,7 @@ COPY .env.example .env
 # Copy city CSV files for comprehensive scraping
 COPY Villes_france.csv ./
 COPY Villes_belgique.csv ./
+COPY Population_villes_france.csv ./
 
 # Expose port
 EXPOSE 20001
