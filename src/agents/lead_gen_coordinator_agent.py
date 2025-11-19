@@ -393,19 +393,18 @@ class LeadGenCoordinatorAgent:
         # Determine strategy
         strategy = determine_strategy(pain_type, input_data.target_count, target_industries)
 
-        # Select cities using CitiesHelper
-        cities = []
-        if self.cities_helper:
-            cities = self.cities_helper.optimize_city_selection(
-                target_count=input_data.target_count,
-                pain_type=pain_type,
-                target_industries=target_industries,
-                country=input_data.country
-            )
-        else:
-            # Fallback: use top 10 cities
-            cities = ["Paris", "Lyon", "Marseille", "Toulouse", "Nice", "Nantes",
-                     "Bordeaux", "Lille", "Rennes", "Strasbourg"]
+        # COMPREHENSIVE MODE: Use ALL cities from CSV files
+        # The API endpoint will load all cities and scrape comprehensively
+        cities_mode = "ALL_CITIES"  # Special flag for comprehensive scraping
+
+        # Load city count for estimation
+        try:
+            from src.helpers.cities_loader import get_cities_loader
+            cities_loader = get_cities_loader()
+            city_count_stats = cities_loader.get_city_count(input_data.country)
+            total_cities = city_count_stats.get("france", 0) + city_count_stats.get("wallonie", 0)
+        except:
+            total_cities = 5000  # Rough estimate if loader fails
 
         # Generate Google Maps searches
         google_maps_searches = []
@@ -415,8 +414,10 @@ class LeadGenCoordinatorAgent:
             for keyword in keywords:
                 google_maps_searches.append({
                     "query": keyword,
-                    "cities": cities,
-                    "max_results_per_city": 50
+                    "cities": cities_mode,  # ALL_CITIES flag
+                    "country": input_data.country,
+                    "use_pagination": True,  # Enable intelligent pagination
+                    "comprehensive": True  # Full scraping mode
                 })
 
         # Generate JobSpy searches
@@ -428,23 +429,29 @@ class LeadGenCoordinatorAgent:
                 location=input_data.country
             )
 
-        # Estimate leads
-        estimated_gmaps = len(google_maps_searches) * len(cities) * 50
+        # Estimate leads (comprehensive mode with ALL cities)
+        # Conservative estimate: avg 20 results per city per query (with pagination)
+        estimated_gmaps = len(google_maps_searches) * total_cities * 20
         estimated_jobspy = sum([s.get("max_results", 100) for s in jobspy_searches])
 
         estimated_leads = {
             "google_maps": estimated_gmaps,
             "jobspy": estimated_jobspy,
-            "total": estimated_gmaps + estimated_jobspy
+            "total": estimated_gmaps + estimated_jobspy,
+            "note": f"Comprehensive scraping across {total_cities} cities with intelligent pagination"
         }
 
         # Execution plan
         execution_plan = {
-            "step_1": f"Execute {len(google_maps_searches)} Google Maps searches in parallel",
-            "step_2": f"Execute {len(jobspy_searches)} JobSpy searches in parallel",
-            "step_3": "Merge and deduplicate leads by company_name",
-            "step_4": "Feed qualified leads to email generation pipeline",
-            "estimated_time": f"{(estimated_gmaps + estimated_jobspy) // 60} minutes"
+            "mode": "COMPREHENSIVE_SCRAPING",
+            "step_1": f"Execute {len(google_maps_searches)} Google Maps searches across ALL {total_cities} cities",
+            "step_2": f"Execute {len(jobspy_searches)} JobSpy searches for hiring signals",
+            "step_3": "Automatic deduplication in Supabase (by company_name + city)",
+            "step_4": "Store all unique leads in database for future campaigns",
+            "step_5": "Feed qualified leads to email generation pipeline",
+            "estimated_time": f"{(total_cities * len(google_maps_searches)) // 120} hours (background process)",
+            "cities_count": total_cities,
+            "pagination": "intelligent (auto-stop when no more results)"
         }
 
         return CoordinatorOutputSchema(
@@ -452,7 +459,7 @@ class LeadGenCoordinatorAgent:
             strategy=strategy,
             google_maps_searches=google_maps_searches,
             jobspy_searches=jobspy_searches,
-            cities=cities,
+            cities=[cities_mode],  # Return flag instead of city list
             estimated_leads=estimated_leads,
             execution_plan=execution_plan
         )

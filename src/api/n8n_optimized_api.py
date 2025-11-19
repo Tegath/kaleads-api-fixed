@@ -21,7 +21,7 @@ try:
     load_dotenv()
 except ImportError:
     pass  # dotenv not installed, variables should be set in environment
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from fastapi import FastAPI, HTTPException, Header, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -258,10 +258,26 @@ class CoordinatorAnalyzeResponse(BaseModel):
 class GoogleMapsSearchRequest(BaseModel):
     """Request for executing Google Maps searches."""
     query: str = Field(..., description="Search query (e.g., 'agence marketing')")
-    cities: List[str] = Field(..., description="List of cities to search in")
+    cities: Union[List[str], str] = Field(..., description="List of cities OR 'ALL_CITIES' for comprehensive scraping")
     max_results_per_city: int = Field(
         50,
-        description="Maximum results per city"
+        description="Maximum results per city (ignored if use_pagination=True)"
+    )
+    country: str = Field(
+        "France",
+        description="Country for comprehensive search (France or Wallonie)"
+    )
+    use_pagination: bool = Field(
+        False,
+        description="Enable intelligent pagination (scrapes ALL results per city)"
+    )
+    comprehensive: bool = Field(
+        False,
+        description="Comprehensive mode: scrape all cities with pagination and store in Supabase"
+    )
+    client_id: str = Field(
+        "kaleads",
+        description="Client ID for lead storage in Supabase"
     )
 
 
@@ -948,13 +964,25 @@ async def execute_google_maps_search(request: GoogleMapsSearchRequest):
     """
     Execute Google Maps lead generation search.
 
-    Searches for businesses matching the query across multiple cities.
+    Modes:
+    1. Standard: Provide list of cities, limited results per city
+    2. Comprehensive: Use "ALL_CITIES" flag to scrape all cities with pagination
 
-    Example request:
+    Example standard request:
     {
         "query": "agence marketing",
         "cities": ["Paris", "Lyon", "Marseille"],
         "max_results_per_city": 50
+    }
+
+    Example comprehensive request:
+    {
+        "query": "agence marketing",
+        "cities": "ALL_CITIES",
+        "country": "France",
+        "use_pagination": true,
+        "comprehensive": true,
+        "client_id": "kaleads"
     }
 
     Returns:
@@ -968,24 +996,52 @@ async def execute_google_maps_search(request: GoogleMapsSearchRequest):
         # Initialize Google Maps integration
         gmaps = GoogleMapsLeadGenerator()
 
-        # Execute multi-city search
-        leads = gmaps.search_multiple_cities(
-            query=request.query,
-            cities=request.cities,
-            max_results_per_city=request.max_results_per_city
-        )
+        # Check if comprehensive mode (ALL_CITIES)
+        if request.cities == "ALL_CITIES" or request.comprehensive:
+            # Comprehensive mode: scrape ALL cities with pagination
+            leads = gmaps.search_all_cities_comprehensive(
+                query=request.query,
+                country=request.country
+            )
+            cities_searched = ["ALL_CITIES"]
+
+            # Store in Supabase with deduplication
+            if request.comprehensive:
+                try:
+                    from src.providers.leads_storage import LeadsStorage
+                    storage = LeadsStorage(client_id=request.client_id)
+                    stats = storage.store_leads(leads)
+                    logger.info(f"Stored leads in Supabase: {stats}")
+                except Exception as e:
+                    logger.error(f"Error storing leads: {e}")
+
+        else:
+            # Standard mode: limited cities
+            cities_list = request.cities if isinstance(request.cities, list) else [request.cities]
+
+            leads = gmaps.search_multiple_cities(
+                query=request.query,
+                cities=cities_list,
+                max_results_per_city=request.max_results_per_city,
+                country=request.country,
+                use_pagination=request.use_pagination
+            )
+            cities_searched = cities_list
 
         processing_time = (datetime.now() - start_time).total_seconds()
 
-        # Estimate cost (RapidAPI Google Maps Scraper: ~$0.001 per request)
-        # Assuming 1 request per city
-        cost = len(request.cities) * 0.001
+        # Estimate cost (RapidAPI Google Maps Scraper: ~$0.001 per request/page)
+        # In comprehensive mode, this could be thousands of requests
+        if request.cities == "ALL_CITIES":
+            cost = len(leads) * 0.0001  # Rough estimate based on results
+        else:
+            cost = len(cities_searched) * 0.001
 
         return GoogleMapsSearchResponse(
             success=True,
             leads=leads,
             total_leads=len(leads),
-            cities_searched=request.cities,
+            cities_searched=cities_searched,
             cost_usd=cost
         )
 

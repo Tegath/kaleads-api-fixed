@@ -1,0 +1,244 @@
+{
+  "client_name": "Kaleads",
+  "pain_type": "lead_generation",
+  "strategy": "hybrid",
+  "google_maps_searches": [
+    {
+      "query": "scale-up SaaS",
+      "cities": [
+        "Paris",
+        "Lyon",
+        "Toulouse",
+        "Nantes",
+        "Bordeaux",
+        "Lille",
+        "Montpellier",
+        "Grenoble",
+        "Rennes",
+        "Marseille",
+        "Nice",
+        "Strasbourg",
+        "Reims",
+        "Saint-Étienne",
+        "Toulon",
+        "Le Havre",
+        "Dijon",
+        "Angers",
+        "Nîmes",
+        "Villeurbanne",
+        "Saint-Denis",
+        "Le Mans",
+        "Aix-en-Provence",
+        "Clermont-Ferrand",
+        "Brest"
+      ],
+      "max_results_per_city": 50
+    },
+    {
+      "query": "startup SaaS",
+      "cities": [
+        "Paris",
+        "Lyon",
+        "Toulouse",
+        "Nantes",
+        "Bordeaux",
+        "Lille",
+        "Montpellier",
+        "Grenoble",
+        "Rennes",
+        "Marseille",
+        "Nice",
+        "Strasbourg",
+        "Reims",
+        "Saint-Étienne",
+        "Toulon",
+        "Le Havre",
+        "Dijon",
+        "Angers",
+        "Nîmes",
+        "Villeurbanne",
+        "Saint-Denis",
+        "Le Mans",
+        "Aix-en-Provence",
+        "Clermont-Ferrand",
+        "Brest"
+      ],
+      "max_results_per_city": 50
+    },
+    {
+      "query": "agence SaaS",
+      "cities": [
+        "Paris",
+        "Lyon",
+        "Toulouse",
+        "Nantes",
+        "Bordeaux",
+        "Lille",
+        "Montpellier",
+        "Grenoble",
+        "Rennes",
+        "Marseille",
+        "Nice",
+        "Strasbourg",
+        "Reims",
+        "Saint-Étienne",
+        "Toulon",
+        "Le Havre",
+        "Dijon",
+        "Angers",
+        "Nîmes",
+        "Villeurbanne",
+        "Saint-Denis",
+        "Le Mans",
+        "Aix-en-Provence",
+        "Clermont-Ferrand",
+        "Brest"
+      ],
+      "max_results_per_city": 50
+    },
+    {
+      "query": "éditeur de logiciel",
+      "cities": [
+        "Paris",
+        "Lyon",
+        "Toulouse",
+        "Nantes",
+        "Bordeaux",
+        "Lille",
+        "Montpellier",
+        "Grenoble",
+        "Rennes",
+        "Marseille",
+        "Nice",
+        "Strasbourg",
+        "Reims",
+        "Saint-Étienne",
+        "Toulon",
+        "Le Havre",
+        "Dijon",
+        "Angers",
+        "Nîmes",
+        "Villeurbanne",
+        "Saint-Denis",
+        "Le Mans",
+        "Aix-en-Provence",
+        "Clermont-Ferrand",
+        "Brest"
+      ],
+      "max_results_per_city": 50
+    },
+    {
+      "query": "entreprise technologique",
+      "cities": [
+        "Paris",
+        "Lyon",
+        "Toulouse",
+        "Nantes",
+        "Bordeaux",
+        "Lille",
+        "Montpellier",
+        "Grenoble",
+        "Rennes",
+        "Marseille",
+        "Nice",
+        "Strasbourg",
+        "Reims",
+        "Saint-Étienne",
+        "Toulon",
+        "Le Havre",
+        "Dijon",
+        "Angers",
+        "Nîmes",
+        "Villeurbanne",
+        "Saint-Denis",
+        "Le Mans",
+        "Aix-en-Provence",
+        "Clermont-Ferrand",
+        "Brest"
+      ],
+      "max_results_per_city": 50
+    }
+  ],
+  "jobspy_searches": [
+    {
+      "job_title": "Head of Sales",
+      "location": "France",
+      "company_size": [
+        "11-50",
+        "51-200",
+        "201-500"
+      ],
+      "industries": [
+        "SaaS",
+        "Tech"
+      ],
+      "max_results": 100
+    },
+    {
+      "job_title": "VP Marketing",
+      "location": "France",
+      "company_size": [
+        "11-50",
+        "51-200",
+        "201-500"
+      ],
+      "industries": [
+        "SaaS",
+        "Tech"
+      ],
+      "max_results": 100
+    },
+    {
+      "job_title": "Business Developer",
+      "location": "France",
+      "company_size": [
+        "11-50",
+        "51-200"
+      ],
+      "industries": [
+        "SaaS",
+        "Tech"
+      ],
+      "max_results": 100
+    }
+  ],
+  "cities": [
+    "Paris",
+    "Lyon",
+    "Toulouse",
+    "Nantes",
+    "Bordeaux",
+    "Lille",
+    "Montpellier",
+    "Grenoble",
+    "Rennes",
+    "Marseille",
+    "Nice",
+    "Strasbourg",
+    "Reims",
+    "Saint-Étienne",
+    "Toulon",
+    "Le Havre",
+    "Dijon",
+    "Angers",
+    "Nîmes",
+    "Villeurbanne",
+    "Saint-Denis",
+    "Le Mans",
+    "Aix-en-Provence",
+    "Clermont-Ferrand",
+    "Brest"
+  ],
+  "estimated_leads": {
+    "google_maps": 6250,
+    "jobspy": 300,
+    "total": 6550
+  },
+  "execution_plan": {
+    "step_1": "Execute 5 Google Maps searches in parallel",
+    "step_2": "Execute 3 JobSpy searches in parallel",
+    "step_3": "Merge and deduplicate leads by company_name",
+    "step_4": "Feed qualified leads to email generation pipeline",
+    "estimated_time": "109 minutes"
+  }
+}

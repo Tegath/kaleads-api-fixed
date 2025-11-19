@@ -1,0 +1,443 @@
+{
+  "name": "Kaleads - Lead Generation Master",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "client_id",
+              "value": "kaleads"
+            },
+            {
+              "name": "target_count",
+              "value": "500"
+            },
+            {
+              "name": "country",
+              "value": "France"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-params",
+      "name": "Set Parameters",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8001/api/v2/coordinator/analyze",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "client_id",
+              "value": "={{ $json.client_id }}"
+            },
+            {
+              "name": "target_count",
+              "value": "={{ $json.target_count }}"
+            },
+            {
+              "name": "country",
+              "value": "={{ $json.country }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "coordinator-analyze",
+      "name": "Coordinator Analyze",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kaleads-api-key",
+          "name": "Kaleads API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-google-maps",
+      "name": "Loop Google Maps Searches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8001/api/v2/leads/google-maps",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "cities",
+              "value": "={{ $json.cities }}"
+            },
+            {
+              "name": "max_results_per_city",
+              "value": "={{ $json.max_results_per_city }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "execute-google-maps",
+      "name": "Execute Google Maps Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kaleads-api-key",
+          "name": "Kaleads API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Add tracking columns to each lead\nconst leads = $input.item.json.leads || [];\nconst client_id = $('Set Parameters').item.json.client_id;\nconst campaign_id = `${client_id}_${new Date().toISOString().split('T')[0]}`;\nconst timestamp = new Date().toISOString();\n\nconst enrichedLeads = leads.map(lead => ({\n  // Original data\n  company_name: lead.company_name || '',\n  phone: lead.phone || '',\n  website: lead.website || '',\n  address: lead.address || '',\n  city: lead.city || '',\n  rating: lead.rating || '',\n  reviews_count: lead.reviews_count || '',\n  place_id: lead.place_id || '',\n  search_query: lead.search_query || '',\n  \n  // Tracking columns\n  client_id: client_id,\n  campaign_id: campaign_id,\n  date_scraped: timestamp,\n  source: 'google_maps',\n  enriched: false,\n  \n  // Empty columns for later enrichment\n  email: '',\n  linkedin_url: '',\n  linkedin_company: '',\n  industry: '',\n  status: 'new'\n}));\n\nreturn enrichedLeads.map(lead => ({ json: lead }));"
+      },
+      "id": "transform-google-maps",
+      "name": "Transform Google Maps Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID_HERE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "append-google-sheets-gmaps",
+      "name": "Append to Google Sheets (GMaps)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1450, 200],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-oauth",
+          "name": "Google Sheets OAuth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-jobspy",
+      "name": "Loop JobSpy Searches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8001/api/v2/leads/jobspy",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "job_title",
+              "value": "={{ $json.job_title }}"
+            },
+            {
+              "name": "location",
+              "value": "={{ $json.location }}"
+            },
+            {
+              "name": "company_size",
+              "value": "={{ $json.company_size }}"
+            },
+            {
+              "name": "industries",
+              "value": "={{ $json.industries }}"
+            },
+            {
+              "name": "max_results",
+              "value": "={{ $json.max_results }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "execute-jobspy",
+      "name": "Execute JobSpy Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kaleads-api-key",
+          "name": "Kaleads API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Add tracking columns to each lead\nconst leads = $input.item.json.leads || [];\nconst client_id = $('Set Parameters').item.json.client_id;\nconst campaign_id = `${client_id}_${new Date().toISOString().split('T')[0]}`;\nconst timestamp = new Date().toISOString();\n\nconst enrichedLeads = leads.map(lead => ({\n  // Original data\n  company_name: lead.company_name || '',\n  website: lead.website || '',\n  job_title: lead.job_title || '',\n  location: lead.location || '',\n  company_size: lead.company_size || '',\n  posted_date: lead.posted_date || '',\n  job_url: lead.job_url || '',\n  hiring_signal: lead.hiring_signal || '',\n  job_board: lead.job_board || '',\n  \n  // Tracking columns\n  client_id: client_id,\n  campaign_id: campaign_id,\n  date_scraped: timestamp,\n  source: 'jobspy',\n  enriched: false,\n  \n  // Empty columns for later enrichment\n  email: '',\n  phone: '',\n  linkedin_url: '',\n  linkedin_company: '',\n  industry: '',\n  status: 'new'\n}));\n\nreturn enrichedLeads.map(lead => ({ json: lead }));"
+      },
+      "id": "transform-jobspy",
+      "name": "Transform JobSpy Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID_HERE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "append-google-sheets-jobspy",
+      "name": "Append to Google Sheets (JobSpy)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1450, 400],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-oauth",
+          "name": "Google Sheets OAuth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.total_leads }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "check-gmaps-results",
+      "name": "Check GMaps Results",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.total_leads }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "check-jobspy-results",
+      "name": "Check JobSpy Results",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1250, 400]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Parameters": {
+      "main": [
+        [
+          {
+            "node": "Coordinator Analyze",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coordinator Analyze": {
+      "main": [
+        [
+          {
+            "node": "Loop Google Maps Searches",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop JobSpy Searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Google Maps Searches": {
+      "main": [
+        [
+          {
+            "node": "Execute Google Maps Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Google Maps Search": {
+      "main": [
+        [
+          {
+            "node": "Transform Google Maps Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Google Maps Data": {
+      "main": [
+        [
+          {
+            "node": "Append to Google Sheets (GMaps)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Google Sheets (GMaps)": {
+      "main": [
+        [
+          {
+            "node": "Loop Google Maps Searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop JobSpy Searches": {
+      "main": [
+        [
+          {
+            "node": "Execute JobSpy Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute JobSpy Search": {
+      "main": [
+        [
+          {
+            "node": "Transform JobSpy Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform JobSpy Data": {
+      "main": [
+        [
+          {
+            "node": "Append to Google Sheets (JobSpy)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Google Sheets (JobSpy)": {
+      "main": [
+        [
+          {
+            "node": "Loop JobSpy Searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-17T00:00:00.000Z",
+  "versionId": "1"
+}
+
