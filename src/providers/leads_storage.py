@@ -130,7 +130,7 @@ class LeadsStorage:
                 # Insert batch with upsert (on_conflict: do nothing)
                 if prepared_batch:
                     try:
-                        result = self.supabase_client.supabase.table(self.table_name).upsert(
+                        result = self.supabase_client.client.table(self.table_name).upsert(
                             prepared_batch,
                             on_conflict="lead_hash"  # Skip duplicates
                         ).execute()
@@ -161,7 +161,7 @@ class LeadsStorage:
     def get_lead_count(self, source: Optional[str] = None) -> int:
         """Get total lead count, optionally filtered by source"""
         try:
-            query = self.supabase_client.supabase.table(self.table_name).select("id", count="exact")
+            query = self.supabase_client.client.table(self.table_name).select("id", count="exact")
 
             if source:
                 query = query.eq("source", source)
@@ -178,7 +178,7 @@ class LeadsStorage:
     def get_city_stats(self) -> List[Dict]:
         """Get lead count by city"""
         try:
-            result = self.supabase_client.supabase.table(self.table_name).select(
+            result = self.supabase_client.client.table(self.table_name).select(
                 "city, count",
                 count="exact"
             ).eq("client_id", self.client_id).execute()
@@ -198,7 +198,7 @@ class LeadsStorage:
         })
 
         try:
-            result = self.supabase_client.supabase.table(self.table_name).select("id").eq(
+            result = self.supabase_client.client.table(self.table_name).select("id").eq(
                 "lead_hash", lead_hash
             ).execute()
 
@@ -211,7 +211,7 @@ class LeadsStorage:
     def get_leads_by_city(self, city: str, limit: int = 100) -> List[Dict]:
         """Get leads for a specific city"""
         try:
-            result = self.supabase_client.supabase.table(self.table_name).select("*").eq(
+            result = self.supabase_client.client.table(self.table_name).select("*").eq(
                 "city", city
             ).eq("client_id", self.client_id).limit(limit).execute()
 
