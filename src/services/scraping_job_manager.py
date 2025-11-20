@@ -94,7 +94,7 @@ class ScrapingJobManager:
         }
 
         # Insert into database
-        self.supabase_client.supabase.table("scraping_jobs").insert(job_data).execute()
+        self.supabase_client.client.table("scraping_jobs").insert(job_data).execute()
 
         logger.info(f"Created job {job_id}: {query} in {country}")
         logger.info(f"  Cities to scrape: {len(cities_with_strategy)}")
@@ -214,7 +214,7 @@ class ScrapingJobManager:
 
     def _get_job(self, job_id: str) -> Optional[Dict]:
         """Get job from database"""
-        result = self.supabase_client.supabase.table("scraping_jobs").select("*").eq(
+        result = self.supabase_client.client.table("scraping_jobs").select("*").eq(
             "id", job_id
         ).execute()
 
@@ -227,7 +227,7 @@ class ScrapingJobManager:
         update_data = {"status": status, "updated_at": datetime.utcnow().isoformat()}
         update_data.update(kwargs)
 
-        self.supabase_client.supabase.table("scraping_jobs").update(update_data).eq(
+        self.supabase_client.client.table("scraping_jobs").update(update_data).eq(
             "id", job_id
         ).execute()
 
@@ -236,7 +236,7 @@ class ScrapingJobManager:
         update_data = {"updated_at": datetime.utcnow().isoformat()}
         update_data.update(kwargs)
 
-        self.supabase_client.supabase.table("scraping_jobs").update(update_data).eq(
+        self.supabase_client.client.table("scraping_jobs").update(update_data).eq(
             "id", job_id
         ).execute()
 
@@ -251,7 +251,7 @@ class ScrapingJobManager:
                 "timestamp": datetime.utcnow().isoformat()
             })
 
-            self.supabase_client.supabase.table("scraping_jobs").update({
+            self.supabase_client.client.table("scraping_jobs").update({
                 "errors": errors,
                 "last_error": error,
                 "retry_count": job.get('retry_count', 0) + 1
@@ -308,7 +308,7 @@ class ScrapingJobManager:
 
     def list_jobs(self, status: str = None, limit: int = 50) -> List[Dict]:
         """List jobs, optionally filtered by status"""
-        query = self.supabase_client.supabase.table("scraping_jobs").select("*")
+        query = self.supabase_client.client.table("scraping_jobs").select("*")
 
         if status:
             query = query.eq("status", status)
