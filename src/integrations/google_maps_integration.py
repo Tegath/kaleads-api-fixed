@@ -77,30 +77,44 @@ class GoogleMapsLeadGenerator:
         language: str = "fr"
     ) -> Optional[Dict]:
         """
-        Search places on Google Maps.
+        Search places on Google Maps using /locate_and_search endpoint.
 
         Args:
             query: Search keyword (e.g., "restaurants", "agence marketing")
-            location: Location (e.g., "Paris 75001 France")
-            page: Page number (for pagination)
+            location: Location (e.g., "Paris", "Lyon France")
+            page: Page number (for pagination, converted to offset)
             language: Language of results
 
         Returns:
             Dictionary with results or None on error
         """
         try:
-            # Full search query
-            search_query = f"{query} {location}"
+            # Full search query with location
+            search_query = f"{query} in {location}"
 
-            # Search endpoint (adapt according to actual API)
-            endpoint = "/search"
+            # Use /locate_and_search endpoint (correct endpoint for this API)
+            endpoint = "/locate_and_search"
+
+            # Convert page to offset (page 1 = offset 0, page 2 = offset 20, etc.)
+            limit = 20
+            offset = (page - 1) * limit
+
+            # Extract country code from location
+            country = "fr"  # Default France
+            if "France" in location:
+                country = "fr"
+            elif "Belgium" in location or "Belgique" in location:
+                country = "be"
+
             params = {
                 "query": search_query,
-                "page": page,
-                "lang": language
+                "offset": offset,
+                "limit": limit,
+                "lang": language,
+                "country": country
             }
 
-            logger.info(f"Searching: {search_query} (page {page})")
+            logger.info(f"Searching: {search_query} (offset={offset}, limit={limit})")
 
             response = self.session.get(
                 f"{self.base_url}{endpoint}",
@@ -112,8 +126,15 @@ class GoogleMapsLeadGenerator:
             response.raise_for_status()
             data = response.json()
 
-            logger.info(f"Results found: {len(data.get('data', []))}")
-            return data
+            # The API returns results directly, not in a 'data' field
+            # Wrap in expected format for compatibility
+            if isinstance(data, list):
+                results = {"data": data}
+            else:
+                results = data
+
+            logger.info(f"Results found: {len(results.get('data', []))}")
+            return results
 
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 401:
@@ -121,6 +142,8 @@ class GoogleMapsLeadGenerator:
             elif e.response.status_code == 429:
                 logger.warning("Rate limit reached - Pausing before retry")
                 time.sleep(5)
+            elif e.response.status_code == 404:
+                logger.error(f"Endpoint not found - API may have changed. Query: {search_query}")
             else:
                 logger.error(f"HTTP Error {e.response.status_code}: {e}")
             return None
