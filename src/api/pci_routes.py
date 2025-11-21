@@ -3,9 +3,8 @@ PCI Qualification API Routes
 Endpoints for qualifying leads against client's Ideal Customer Profile
 """
 import logging
-from fastapi import APIRouter, HTTPException, Depends, Header
+from fastapi import APIRouter, HTTPException
 from typing import Optional
-import os
 
 from src.agents.pci_qualifier_agent import (
     PCIQualifierAgent,
@@ -18,18 +17,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/pci", tags=["PCI Qualification"])
 
 
-def verify_api_key(x_api_key: str = Header(...)):
-    """Verify API key."""
-    expected_key = os.getenv("API_KEY", "your-secure-api-key")
-    if x_api_key != expected_key:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
-    return x_api_key
-
-
 @router.post("/qualify", response_model=PCIQualificationResult)
 async def qualify_lead(
-    request: PCIQualificationRequest,
-    api_key: str = Depends(verify_api_key)
+    request: PCIQualificationRequest
 ):
     """
     Qualify a lead against client's Ideal Customer Profile (PCI).
