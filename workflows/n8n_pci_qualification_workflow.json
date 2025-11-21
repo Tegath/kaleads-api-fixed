@@ -1,0 +1,399 @@
+{
+  "name": "Lead PCI Qualification - Progressive",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "name": "Cron - Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        300
+      ],
+      "id": "cron-trigger"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "*"
+            },
+            {
+              "name": "stage",
+              "value": "eq.new"
+            },
+            {
+              "name": "client_id",
+              "value": "eq.kaleads"
+            },
+            {
+              "name": "limit",
+              "value": "50"
+            },
+            {
+              "name": "order",
+              "value": "created_at.asc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        }
+      },
+      "name": "Get 50 New Leads from Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        460,
+        300
+      ],
+      "id": "get-leads"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Loop Through Leads",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "id": "loop-leads"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.website }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Check if Website Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "id": "check-website"
+    },
+    {
+      "parameters": {
+        "url": "https://r.jina.ai/{{ $json.website }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Return-Format",
+              "value": "text"
+            },
+            {
+              "name": "X-Timeout",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Scrape Website with Jina.ai",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1120,
+        200
+      ],
+      "id": "scrape-website",
+      "notes": "Free website scraping service - no auth needed"
+    },
+    {
+      "parameters": {
+        "url": "http://92.112.193.183:20001/api/v2/pci/qualify",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "lL^nc2U%tU8f2!LH48!29!mW8"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "company_name",
+              "value": "={{ $('Loop Through Leads').item.json.company_name }}"
+            },
+            {
+              "name": "website",
+              "value": "={{ $('Loop Through Leads').item.json.website }}"
+            },
+            {
+              "name": "website_content",
+              "value": "={{ $json.data }}"
+            },
+            {
+              "name": "city",
+              "value": "={{ $('Loop Through Leads').item.json.city }}"
+            },
+            {
+              "name": "rating",
+              "value": "={{ $('Loop Through Leads').item.json.rating }}"
+            },
+            {
+              "name": "reviews_count",
+              "value": "={{ $('Loop Through Leads').item.json.reviews_count }}"
+            },
+            {
+              "name": "client_id",
+              "value": "kaleads"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Call PCI Qualification API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1340,
+        200
+      ],
+      "id": "qualify-api"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "eq.={{ $('Loop Through Leads').item.json.id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"stage\": \"{{ $json.stage }}\",\n  \"score\": {{ $json.score }},\n  \"pci_match\": {{ $json.match }},\n  \"website_content\": \"{{ $('Scrape Website with Jina.ai').item.json.data }}\",\n  \"qualified_at\": \"{{ $now }}\",\n  \"qualification_reasons\": {{ JSON.stringify($json.reasons) }}\n}",
+        "options": {}
+      },
+      "name": "Update Lead in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1560,
+        200
+      ],
+      "id": "update-lead"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "eq.={{ $json.id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"stage\": \"no_site\",\n  \"qualified_at\": \"{{ $now }}\",\n  \"qualification_reasons\": [\"No website found\"]\n}",
+        "options": {}
+      },
+      "name": "Mark as No Site",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1120,
+        400
+      ],
+      "id": "mark-no-site"
+    }
+  ],
+  "connections": {
+    "Cron - Every Hour": {
+      "main": [
+        [
+          {
+            "node": "Get 50 New Leads from Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get 50 New Leads from Supabase": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Through Leads": {
+      "main": [
+        [
+          {
+            "node": "Check if Website Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Website Exists": {
+      "main": [
+        [
+          {
+            "node": "Scrape Website with Jina.ai",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark as No Site",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Website with Jina.ai": {
+      "main": [
+        [
+          {
+            "node": "Call PCI Qualification API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call PCI Qualification API": {
+      "main": [
+        [
+          {
+            "node": "Update Lead in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lead in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as No Site": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-21T00:00:00.000Z",
+  "versionId": "1"
+}

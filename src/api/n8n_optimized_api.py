@@ -58,6 +58,7 @@ from src.agents.lead_gen_coordinator_agent import (
 from src.integrations.google_maps_integration import GoogleMapsLeadGenerator
 from src.integrations.jobspy_integration import JobSpyLeadGenerator
 from src.utils.cities_helper import CitiesHelper
+from src.api.pci_routes import router as pci_router
 
 app = FastAPI(
     title="n8n Email Generation API v3.0",
@@ -77,6 +78,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include PCI qualification router
+app.include_router(pci_router)
 
 # In-memory batch storage (replace with Redis in production)
 BATCH_JOBS: Dict[str, Dict[str, Any]] = {}
