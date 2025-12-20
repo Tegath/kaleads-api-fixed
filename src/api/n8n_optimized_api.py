@@ -60,6 +60,9 @@ from src.integrations.jobspy_integration import JobSpyLeadGenerator
 from src.utils.cities_helper import CitiesHelper
 from src.api.pci_routes import router as pci_router
 
+# Import V2 LEGO API for mounting
+from src.api.v2.api import app as v2_app
+
 app = FastAPI(
     title="n8n Email Generation API v3.0",
     description="Context-aware multi-agent email generation with v3 agents (Tavily web search + ClientContext)",
@@ -81,6 +84,10 @@ app.add_middleware(
 
 # Include PCI qualification router
 app.include_router(pci_router)
+
+# Mount V2 LEGO API (client-agnostic architecture)
+# All V2 routes available at /v2/...
+app.mount("/v2", v2_app)
 
 # In-memory batch storage (replace with Redis in production)
 BATCH_JOBS: Dict[str, Dict[str, Any]] = {}
